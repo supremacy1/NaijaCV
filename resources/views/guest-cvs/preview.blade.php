@@ -1,4 +1,3 @@
-
 <!DOCTYPE html>
 <html lang="en">
 <head>
@@ -415,68 +414,46 @@
 
             </div>
 
-        <!-- PREMIUM CV -->
-        @else
+        @elseif(in_array($cv->template, ['professional', 'executive']) && $cv->payment_status === 'paid' && $cv->is_paid)
 
-            <div class="bg-blue-50 border border-blue-200 rounded-xl p-6 mt-7 text-left">
-
-                <h3 class="font-bold text-blue-900 text-lg">
-                    Premium CV Design Selected
-                </h3>
-
-                <p class="text-sm text-blue-800 mt-2">
-
-                    You selected the
-
-                    <strong>
-                        {{ $cv->template === 'professional' ? 'Professional' : 'Executive' }}
-                    </strong>
-
-                    template.
-
-                </p>
-
-                <div class="flex justify-between items-center mt-5 py-4 border-t border-blue-200">
-
-                    <span class="text-blue-900 font-semibold">
-                        Premium CV Price
-                    </span>
-
-                    <span class="text-2xl font-extrabold text-blue-900">
-                        ₦3,000
-                    </span>
-
-                </div>
-
-                <div class="bg-white border border-blue-100 rounded-lg p-4 mt-3">
-
-                    <p class="text-sm font-semibold text-gray-800">
-                        Payment integration is coming in the next stage.
-                    </p>
-
-                    <p class="text-xs text-gray-500 mt-1">
-                        Your CV has been saved. PDF download will become
-                        available after successful payment verification.
-                    </p>
-
-                </div>
-
+            <div class="alert alert-success">
+                <h4>Payment Successful!</h4>
+                <p>Your premium CV has been unlocked.</p>
             </div>
 
-            <div class="mt-6">
+            <a href="{{ route('guest-cvs.download', $cv->guest_token) }}"
+               class="btn btn-success">
+                Download Premium CV
+            </a>
 
-                <a
-                    href="{{ route('guest-cvs.create') }}"
-                    class="inline-block bg-gray-200 hover:bg-gray-300 text-gray-700 px-7 py-4 rounded-xl font-bold"
-                >
-                    Create Another CV
-                </a>
+        @elseif(in_array($cv->template, ['professional', 'executive']))
 
+            <div class="alert alert-warning">
+                <h4>Unlock Your Premium CV</h4>
+
+                <p>
+                    You selected the
+                    <strong>{{ ucfirst($cv->template) }} Template</strong>.
+                </p>
+
+                <h3>₦3,000</h3>
+
+                <p>
+                    Complete your payment to download your professional CV in PDF format.
+                </p>
+
+                <form action="{{ route('guest-cvs.pay', $cv->guest_token) }}"
+                      method="POST">
+                    @csrf
+
+                   <button type="submit" class="paystack-button flex-1 bg-blue-600 hover:bg-blue-700 text-white text-center font-bold py-4 px-6 rounded-xl shadow-sm">
+    <span>Pay ₦3,000 with Paystack</span>
+    <span>→</span>
+</button>
+                </form>
             </div>
 
         @endif
-
-    </div>
 
 </main>
 

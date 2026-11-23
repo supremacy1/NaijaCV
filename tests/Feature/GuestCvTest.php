@@ -45,4 +45,20 @@ class GuestCvTest extends TestCase
         $this->assertSame('free', $cv->payment_status);
         $this->assertFalse($cv->is_paid);
     }
+
+    public function test_guest_cv_preview_renders_successfully(): void
+    {
+        $this->followingRedirects();
+
+        $response = $this->post('/create-cv', [
+            'title' => 'My CV',
+            'template' => 'simple',
+            'full_name' => 'Jane Doe',
+            'email' => 'jane@example.com',
+            'phone' => '+2348000000000',
+        ]);
+
+        $response->assertOk()
+            ->assertSee('Your CV has been created!');
+    }
 }

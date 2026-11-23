@@ -9,17 +9,17 @@ use App\Http\Controllers\GuestCvController;
 Route::get('/', function () {
     return view('welcome');
 })->name('home');
-// Public guest CV routes
+
+// ========================================
+// PUBLIC GUEST CV ROUTES
+// No login required
+// ========================================
+
 Route::get('/create-cv', [
     GuestCvController::class,
     'create'
-    
 ])->name('guest-cvs.create');
-Route::get('/my-cv/{token}/download', [
-    GuestCvController::class,
-    'download'
-])->middleware('throttle:10,1')
-  ->name('guest-cvs.download');
+
 Route::post('/create-cv', [
     GuestCvController::class,
     'store'
@@ -30,6 +30,34 @@ Route::get('/my-cv/{token}', [
     GuestCvController::class,
     'preview'
 ])->name('guest-cvs.preview');
+
+Route::get('/my-cv/{token}/download', [
+    GuestCvController::class,
+    'download'
+])->middleware('throttle:10,1')
+  ->name('guest-cvs.download');
+
+// ========================================
+// PUBLIC PAYSTACK ROUTES
+// No login required
+// ========================================
+
+Route::post('/my-cv/{token}/pay', [
+    GuestCvController::class,
+    'pay'
+])->middleware('throttle:5,1')
+  ->name('guest-cvs.pay');
+
+Route::get('/my-cv/{token}/payment/callback', [
+    GuestCvController::class,
+    'paymentCallback'
+])->middleware('throttle:10,1')
+  ->name('guest-cvs.payment.callback');
+
+// ========================================
+// AUTHENTICATED USER ROUTES
+// ========================================
+
 Route::middleware(['auth', 'verified'])->group(function () {
 
     Route::get('/dashboard', [
