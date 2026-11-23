@@ -1,0 +1,69 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+:root {
+    --brand: #087443;
+    --brand-dark: #075c36;
+    --brand-soft: #eaf7ef;
+    --ink: #14251c;
+    --copy: #526158;
+    --muted: #819087;
+    --line: #e6eee8;
+}
+
+html { scroll-behavior: smooth; }
+body { font-family: 'DM Sans', sans-serif; color: var(--ink); background: #f8fbf9; }
+h1, h2, h3, h4 { font-family: 'Plus Jakarta Sans', sans-serif; }
+
+.auth-shell {
+    min-height: 100vh; display: flex; flex-direction: column; align-items: center;
+    justify-content: center; padding: 40px 20px;
+    background: radial-gradient(circle at 85% 15%, #e2f5e9 0, transparent 28%), linear-gradient(135deg, #f8fcf9, #fff 65%);
+}
+.auth-brand { color: var(--ink); font: 800 28px 'Plus Jakarta Sans', sans-serif; letter-spacing: -1.3px; margin-bottom: 24px; }
+.auth-brand span { color: var(--brand); }
+.auth-card { width: 100%; max-width: 480px; padding: 34px; background: white; border: 1px solid var(--line); border-radius: 16px; box-shadow: 0 20px 55px rgba(24,70,43,.09); }
+.auth-card form > div:first-child::before { content: 'Welcome to NaijaCV'; display: block; color: var(--ink); font: 800 23px 'Plus Jakarta Sans', sans-serif; letter-spacing: -.6px; margin-bottom: 22px; }
+.auth-home { margin-top: 22px; color: var(--muted); font-size: 13px; font-weight: 600; }
+.auth-home:hover { color: var(--brand); }
+.auth-card label { color: #33443a; font-weight: 700; }
+.auth-card input:not([type=checkbox]) { width: 100%; min-height: 46px; margin-top: 6px; border: 1px solid #dce7df; border-radius: 8px; box-shadow: none; }
+.auth-card input:focus { border-color: var(--brand); --tw-ring-color: rgba(8,116,67,.18); }
+.auth-card input[type=checkbox] { color: var(--brand); border-color: #cbd8ce; }
+.auth-card button, .auth-card [type=submit] { background: var(--brand); color: white; border: 0; border-radius: 8px; padding: 11px 18px; font-weight: 700; }
+.auth-card button:hover, .auth-card [type=submit]:hover { background: var(--brand-dark); }
+.auth-card a { color: var(--brand); font-weight: 600; }
+.auth-card a:hover { color: var(--brand-dark); }
+.app-shell { background: #f8fbf9; }
+.app-navigation { border-color: var(--line) !important; box-shadow: 0 2px 10px rgba(20,37,28,.03); }
+.app-navigation .text-blue-700 { color: var(--brand) !important; }
+.app-shell main { min-height: calc(100vh - 64px); }
+.app-shell header:not(nav) { background: white; border-color: var(--line); box-shadow: 0 2px 10px rgba(20,37,28,.03); }
+.app-shell input:not([type=checkbox]):not([type=radio]), .app-shell select, .app-shell textarea { border-color: #dce7df; border-radius: 8px; box-shadow: none; }
+.app-shell input:focus, .app-shell select:focus, .app-shell textarea:focus { border-color: var(--brand); --tw-ring-color: rgba(8,116,67,.18); }
+.app-shell input[type=checkbox] { color: var(--brand); }
+.app-shell button[type=submit] { border-radius: 8px; }
+
+/* Recolor the common Tailwind accents used by the CV, job and profile screens. */
+.text-blue-700, .text-blue-600, .text-indigo-700, .text-indigo-600 { color: var(--brand) !important; }
+.bg-blue-600, .bg-indigo-600 { background-color: var(--brand) !important; }
+.bg-blue-100, .bg-blue-50, .bg-indigo-100, .bg-indigo-50 { background-color: var(--brand-soft) !important; }
+.border-blue-600, .border-indigo-600 { border-color: var(--brand) !important; }
+.hover\:bg-blue-700:hover, .hover\:bg-indigo-700:hover { background-color: var(--brand-dark) !important; }
+.hover\:bg-blue-100:hover, .hover\:bg-indigo-100:hover { background-color: #d8efdf !important; }
+.hover\:text-blue-600:hover, .hover\:text-blue-700:hover { color: var(--brand-dark) !important; }
+.focus\:border-blue-500:focus, .focus\:border-indigo-500:focus { border-color: var(--brand) !important; }
+
+.guest-cv-page { color: var(--ink); background: #f8fbf9 !important; }
+.guest-cv-page header { border-color: var(--line); box-shadow: 0 2px 10px rgba(20,37,28,.03); }
+.guest-cv-page main > div:first-child { padding: 28px; border: 1px solid var(--line); border-radius: 16px; background: radial-gradient(circle at 90% 0, #eaf7ef, transparent 38%), white; }
+.guest-cv-page form > section { border-color: var(--line); border-radius: 14px; box-shadow: 0 4px 18px rgba(24,70,43,.04); }
+.guest-cv-page h1, .guest-cv-page h2 { color: var(--ink); }
+.guest-cv-page .guest-brand { color: var(--ink) !important; font-family: 'Plus Jakarta Sans', sans-serif; letter-spacing: -1px; }
+.guest-cv-page .guest-brand span { color: var(--brand); }
+
+@media (max-width: 640px) {
+    .auth-shell { justify-content: flex-start; padding-top: 48px; }
+    .auth-card { padding: 25px 21px; }
+}
