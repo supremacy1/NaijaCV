@@ -29,9 +29,14 @@ class GuestCvController extends Controller
             'title' => 'required|string|max:150',
             'template' => [
                 'required',
-                Rule::in(['simple', 'professional', 'executive'])
+                Rule::in(array_merge(['simple'], $this->premiumTemplates()))
             ],
-
+'photo' => [
+    'nullable',
+    'image',
+    'mimes:jpg,jpeg,png,webp',
+    'max:2048',
+],
             'full_name' => 'required|string|max:150',
             'professional_title' => 'nullable|string|max:150',
             'email' => 'required|email|max:150',
@@ -113,17 +118,24 @@ class GuestCvController extends Controller
             })
             ->values()
             ->all();
+$photoPath = null;
 
+if ($request->hasFile('photo')) {
+    $photoPath = $request->file('photo')
+        ->store('cv-photos', 'public');
+}
         $cv = DB::transaction(function () use (
             $validated,
             $educations,
             $experiences,
-            $skills
+            $skills,
+            $photoPath
         ) {
             $isFreeTemplate = $validated['template'] === 'simple';
 
             $cv = Cv::create([
                 'user_id' => null,
+                'photo_path' => $photoPath,
 
                 'title' => $validated['title'],
                 'full_name' => $validated['full_name'],
@@ -172,8 +184,7 @@ class GuestCvController extends Controller
             ->whereNull('user_id')
             ->where('expires_at', '>', now())
             ->firstOrFail();
-
-        if (!in_array($cv->template, ['professional', 'executive'])) {
+if (!$this->isPremiumTemplate($cv->template)) {
             abort(403, 'This CV does not require payment.');
         }
 
@@ -358,7 +369,226 @@ class GuestCvController extends Controller
                 ->with('error', 'An error occurred while verifying your payment. If you were charged, please contact support.');
         }
     }
+/**
+ * Receive and verify Paystack webhook notifications.
+ */
+public function webhook(Request $request)
+{
+    $rawBody = $request->getContent();
 
+    $webhookSecret = config('services.paystack.webhook_secret');
+    $secretKey = config('services.paystack.secret_key');
+
+    $signature = $request->header('Paystack-Signature');
+    $legacySignature = $request->header('X-Paystack-Signature');
+
+    $validSignature = false;
+
+    // Current Paystack signing format.
+    if ($signature && $webhookSecret) {
+        $timestamp = null;
+        $signatures = [];
+
+        foreach (explode(',', $signature) as $part) {
+            $parts = explode('=', trim($part), 2);
+
+            if (count($parts) !== 2) {
+                continue;
+            }
+
+            if ($parts[0] === 't') {
+                $timestamp = $parts[1];
+            }
+
+            if ($parts[0] === 'v1') {
+                $signatureParts = explode(':', $parts[1], 2);
+
+                if (count($signatureParts) === 2) {
+                    $signatures[] = $signatureParts[1];
+                }
+            }
+        }
+
+        if (
+            $timestamp !== null &&
+            ctype_digit($timestamp) &&
+            abs(time() - (int) $timestamp) <= 300
+        ) {
+            $expected = hash_hmac(
+                'sha512',
+                $timestamp . '.' . $rawBody,
+                $webhookSecret
+            );
+
+            foreach ($signatures as $received) {
+                if (
+                    preg_match('/^[a-f0-9]{128}$/i', $received) &&
+                    hash_equals($expected, strtolower($received))
+                ) {
+                    $validSignature = true;
+                    break;
+                }
+            }
+        }
+    }
+
+    // Older Paystack signature format.
+    elseif ($legacySignature && $secretKey) {
+        $expected = hash_hmac(
+            'sha512',
+            $rawBody,
+            $secretKey
+        );
+
+        if (
+            preg_match('/^[a-f0-9]{128}$/i', $legacySignature) &&
+            hash_equals($expected, strtolower($legacySignature))
+        ) {
+            $validSignature = true;
+        }
+    }
+
+    if (!$validSignature) {
+        return response()->json([
+            'message' => 'Invalid webhook signature.'
+        ], 401);
+    }
+
+    $event = json_decode($rawBody, true);
+
+    if (!is_array($event)) {
+        return response()->json([
+            'message' => 'Invalid webhook payload.'
+        ], 400);
+    }
+
+    // We only need successful payment notifications.
+    if (($event['event'] ?? null) !== 'charge.success') {
+        return response()->json(['received' => true]);
+    }
+
+    $payment = $event['data'] ?? [];
+
+    $reference = $payment['reference'] ?? null;
+
+    if (
+        !$reference ||
+        ($payment['status'] ?? null) !== 'success' ||
+        (int) ($payment['amount'] ?? 0) !== 300000 ||
+        ($payment['currency'] ?? null) !== 'NGN'
+    ) {
+        return response()->json(['received' => true]);
+    }
+
+    $cv = Cv::where('payment_reference', $reference)
+        ->whereNull('user_id')
+        ->whereIn('template', $this->premiumTemplates())
+        ->first();
+
+    if (!$cv) {
+        return response()->json(['received' => true]);
+    }
+
+    // Idempotent: repeated webhook deliveries cannot unlock twice.
+    if ($cv->payment_status !== 'paid' || !$cv->is_paid) {
+        $cv->update([
+            'is_paid' => true,
+            'payment_status' => 'paid',
+            'payment_verified_at' => now(),
+        ]);
+    }
+
+    return response()->json([
+        'received' => true,
+        'message' => 'Payment notification processed.'
+    ]);
+}
+
+
+/**
+ * Recover a premium CV after payment.
+ * This works even if the customer closed Paystack
+ * before returning to NaijaCV.
+ */
+public function recoverPayment(string $token)
+{
+    $cv = Cv::where('guest_token', $token)
+        ->whereNull('user_id')
+        ->where('expires_at', '>', now())
+        ->firstOrFail();
+
+    // If the webhook already confirmed payment, download.
+    if ($cv->payment_status === 'paid' && $cv->is_paid) {
+        return redirect()->route('guest-cvs.download', [
+            'token' => $cv->guest_token,
+        ]);
+    }
+
+    if (!$this->isPremiumTemplate($cv->template)) {
+        abort(403, 'This CV does not require payment.');
+    }
+
+    if (!$cv->payment_reference) {
+        return redirect()
+            ->route('guest-cvs.preview', ['token' => $token])
+            ->with('error', 'No payment transaction was found for this CV.');
+    }
+
+    $secretKey = config('services.paystack.secret_key');
+
+    if (!$secretKey) {
+        return redirect()
+            ->route('guest-cvs.preview', ['token' => $token])
+            ->with('error', 'Payment verification is unavailable. Please try again later.');
+    }
+
+    try {
+        $response = Http::withToken($secretKey)
+            ->acceptJson()
+            ->timeout(30)
+            ->get(
+                'https://api.paystack.co/transaction/verify/' .
+                urlencode($cv->payment_reference)
+            );
+
+        if (!$response->successful() || !$response->json('status')) {
+            return redirect()
+                ->route('guest-cvs.preview', ['token' => $token])
+                ->with('error', 'We could not check your payment. Please try again.');
+        }
+
+        $payment = $response->json('data');
+
+        $verified =
+            ($payment['status'] ?? null) === 'success' &&
+            (int) ($payment['amount'] ?? 0) === 300000 &&
+            ($payment['currency'] ?? null) === 'NGN' &&
+            ($payment['reference'] ?? null) === $cv->payment_reference;
+
+        if (!$verified) {
+            return redirect()
+                ->route('guest-cvs.preview', ['token' => $token])
+                ->with('error', 'Payment has not been confirmed yet. If you have just paid, please try again shortly.');
+        }
+
+        $cv->update([
+            'is_paid' => true,
+            'payment_status' => 'paid',
+            'payment_verified_at' => now(),
+        ]);
+
+        return redirect()->route('guest-cvs.download', [
+            'token' => $cv->guest_token,
+        ]);
+
+    } catch (\Throwable $e) {
+        report($e);
+
+        return redirect()
+            ->route('guest-cvs.preview', ['token' => $token])
+            ->with('error', 'We could not recover your download right now. Please try again.');
+    }
+}
     /**
      * Display the guest CV preview.
      */
@@ -390,7 +620,7 @@ class GuestCvController extends Controller
             !$cv->is_paid;
 
         $isPremiumPaid =
-            in_array($cv->template, ['professional', 'executive']) &&
+            $this->isPremiumTemplate($cv->template) &&
             $cv->payment_status === 'paid' &&
             $cv->is_paid;
 
@@ -406,4 +636,27 @@ class GuestCvController extends Controller
 
         return $pdf->download($filename);
     }
+
+private function premiumTemplates(): array
+{
+    return [
+        'corporate_blue',
+        'executive_gold',
+        'modern_green',
+        'burgundy',
+        'creative_purple',
+        'minimalist_grey',
+        'elegant_teal',
+        'modern_orange',
+        'premium_navy',
+        'classic_luxury',
+    ];
 }
+
+private function isPremiumTemplate(string $template): bool
+{
+    return in_array($template, $this->premiumTemplates(), true);
+}
+
+    }
+

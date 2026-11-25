@@ -451,6 +451,26 @@
     <span>→</span>
 </button>
                 </form>
+                <div style="margin-top: 18px; text-align: center;">
+
+    <p style="font-size: 14px; color: #666;">
+        Already completed your payment?
+    </p>
+
+    <a href="{{ route('guest-cvs.recover', $cv->guest_token) }}"
+       style="
+           display: inline-block;
+           padding: 12px 22px;
+           border: 1px solid #087443;
+           color: #087443;
+           border-radius: 8px;
+           text-decoration: none;
+           font-weight: 600;
+       ">
+        I've Already Paid — Recover My CV
+    </a>
+
+</div>
             </div>
 
         @endif

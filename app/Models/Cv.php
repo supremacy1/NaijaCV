@@ -24,6 +24,7 @@ class Cv extends Model
         'payment_status',
         'payment_reference',
         'payment_verified_at',
+        'photo_path',
     ];
 
     protected function casts(): array

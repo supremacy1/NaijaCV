@@ -53,7 +53,20 @@ Route::get('/my-cv/{token}/payment/callback', [
     'paymentCallback'
 ])->middleware('throttle:10,1')
   ->name('guest-cvs.payment.callback');
+// Paystack webhook: no login required
+Route::post('/paystack/webhook', [
+    GuestCvController::class,
+    'webhook'
+])->name('paystack.webhook');
 
+// Customer payment recovery: no login required
+Route::get('/my-cv/{token}/recover-payment', [
+    GuestCvController::class,
+    'recoverPayment'
+])->middleware('throttle:10,1')
+  ->name('guest-cvs.recover');
+
+// Keep your existing payment and callback routes public too.
 // ========================================
 // AUTHENTICATED USER ROUTES
 // ========================================
