@@ -10,6 +10,7 @@ use Illuminate\Validation\Rule;
 use Barryvdh\DomPDF\Facade\Pdf;
 use Illuminate\Support\Facades\Http;
 
+
 class GuestCvController extends Controller
 {
     /**
@@ -25,12 +26,23 @@ class GuestCvController extends Controller
      */
     public function store(Request $request)
     {
+        \Illuminate\Support\Facades\Log::info('NAIJACV FORM SUBMISSION', [
+        'template' => $request->input('template'),
+        'package_choice' => $request->input('package_choice'),
+        'has_full_name' => $request->filled('full_name'),
+        'has_email' => $request->filled('email'),
+        'has_phone' => $request->filled('phone'),
+        'has_photo' => $request->hasFile('photo'),
+    ]);
         $validated = $request->validate([
             'title' => 'required|string|max:150',
             'template' => [
-                'required',
-                Rule::in(array_merge(['simple'], $this->premiumTemplates()))
-            ],
+    'required',
+    Rule::in(array_merge(
+        ['simple'],
+        $this->premiumTemplates()
+    )),
+],
 'photo' => [
     'nullable',
     'image',

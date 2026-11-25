@@ -3,137 +3,534 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-
     <title>{{ $cv->full_name }} | NaijaCV Preview</title>
-
-    <link rel="preconnect" href="https://fonts.googleapis.com">
-    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-
-    <link href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@400;500;600;700;800&family=Plus+Jakarta+Sans:wght@500;600;700;800&display=swap" rel="stylesheet">
 
     @vite(['resources/css/app.css', 'resources/js/app.js'])
 
+    @php
+        $template = $cv->template ?? 'simple';
+
+        $themes = [
+            'simple' => ['#26734D', '#E8F3EC'],
+            'corporate_blue' => ['#173B70', '#EAF1FB'],
+            'executive_gold' => ['#252525', '#F4EBD6'],
+            'modern_green' => ['#176B48', '#E7F4EC'],
+            'burgundy' => ['#76263D', '#F6E8EC'],
+            'creative_purple' => ['#6841A5', '#F0EAF9'],
+            'minimalist_grey' => ['#4B5563', '#EEF0F2'],
+            'elegant_teal' => ['#087E83', '#E5F4F4'],
+            'modern_orange' => ['#C65A19', '#FFF0E6'],
+            'premium_navy' => ['#172B4D', '#E9EDF4'],
+            'classic_luxury' => ['#76563C', '#F3ECE4'],
+            'professional' => ['#173B70', '#EAF1FB'],
+            'executive' => ['#252525', '#F4EBD6'],
+        ];
+
+        [$accent, $soft] = $themes[$template] ?? $themes['simple'];
+
+        $sidebarTemplates = [
+            'corporate_blue',
+            'modern_green',
+            'elegant_teal',
+            'classic_luxury',
+        ];
+
+        $hasSidebar = in_array($template, $sidebarTemplates, true);
+
+        $premiumNames = [
+            'corporate_blue' => 'Corporate Blue',
+            'executive_gold' => 'Executive Gold',
+            'modern_green' => 'Modern Green',
+            'burgundy' => 'Burgundy',
+            'creative_purple' => 'Creative Purple',
+            'minimalist_grey' => 'Minimalist Grey',
+            'elegant_teal' => 'Elegant Teal',
+            'modern_orange' => 'Modern Orange',
+            'premium_navy' => 'Premium Navy',
+            'classic_luxury' => 'Classic Luxury',
+            'professional' => 'Professional (Legacy)',
+            'executive' => 'Executive (Legacy)',
+        ];
+
+        $isFree = $template === 'simple'
+            && $cv->payment_status === 'free'
+            && !$cv->is_paid;
+
+        $isPaid = $cv->payment_status === 'paid' && $cv->is_paid;
+
+        $templateLabel = $template === 'simple'
+            ? 'Basic CV'
+            : ($premiumNames[$template] ?? 'CV');
+
+        $photo = $cv->photo_path
+            && file_exists(public_path('storage/' . $cv->photo_path))
+            ? asset('storage/' . $cv->photo_path)
+            : null;
+    @endphp
+
     <style>
+        * { box-sizing: border-box; }
+
         body {
-            background: #f8fafc;
-            font-family: 'DM Sans', sans-serif;
+            margin: 0;
+            background: #f1f3f5;
+            font-family: Arial, Helvetica, sans-serif;
+            color: #252525;
         }
 
         .cv-paper {
-            width: 100%;
-            max-width: 850px;
-            min-height: 1000px;
-            margin: auto;
+            width: 900px;
+            min-height: 1100px;
+            margin: 25px auto;
             background: white;
-            padding: 55px;
-            box-shadow: 0 5px 25px rgba(0,0,0,.07);
-            color: #374151;
+            box-shadow: 0 10px 35px #00000015;
+            overflow: hidden;
+            --accent: {{ $accent }};
+            --soft: {{ $soft }};
         }
 
-        .cv-personal-header {
-            padding-bottom: 24px;
-            border-bottom: 2px solid #087443;
+        .cv-header {
+            padding: 42px 48px;
+            background: var(--accent);
+            color: white;
+            position: relative;
+            overflow: hidden;
         }
 
         .cv-name {
-            color: #111827;
-            font-family: 'Plus Jakarta Sans', sans-serif;
+            font-size: 30px;
+            font-weight: 800;
+            line-height: 1.2;
+            margin: 0 0 8px;
         }
 
-        .cv-accent {
-            color: #087443 !important;
+        .cv-role {
+            font-size: 15px;
+            margin-bottom: 14px;
         }
 
-        .cv-heading {
-            color: #087443;
-            border-bottom: 2px solid #087443;
-            padding-bottom: 8px;
-            margin-bottom: 15px;
-            font-weight: 700;
-            text-transform: uppercase;
-            font-size: 14px;
-            letter-spacing: 1px;
+        .cv-contact {
+            font-size: 12px;
+            line-height: 1.8;
+            overflow-wrap: anywhere;
+        }
+
+        .cv-photo {
+            width: 112px;
+            height: 112px;
+            object-fit: cover;
+            border-radius: 50%;
+            border: 4px solid rgba(255,255,255,.8);
+        }
+
+        .cv-header-photo {
+            float: right;
+            margin-left: 20px;
         }
 
         .cv-section {
-            margin-top: 30px;
+            margin-bottom: 27px;
+            break-inside: avoid;
         }
 
-        /* PROFESSIONAL TEMPLATE */
-        .template-professional {
-            border-top: 10px solid #172554;
+        .cv-section h2 {
+            font-size: 13px;
+            letter-spacing: 1.6px;
+            text-transform: uppercase;
+            color: var(--accent);
+            border-bottom: 2px solid var(--soft);
+            padding-bottom: 8px;
+            margin: 0 0 13px;
+            font-weight: 800;
         }
 
-        .template-professional .cv-personal-header {
-            border-bottom: 3px solid #1e3a8a;
+        .cv-section p {
+            font-size: 13px;
+            line-height: 1.7;
+            color: #374151;
+            white-space: pre-line;
+            margin: 0;
         }
 
-        .template-professional .cv-name {
-            color: #172554;
+        .cv-item {
+            margin-bottom: 19px;
+            break-inside: avoid;
         }
 
-        .template-professional .cv-accent {
-            color: #1d4ed8 !important;
+        .cv-item h3 {
+            font-size: 14px;
+            color: #1f2937;
+            margin: 0 0 5px;
+            font-weight: 700;
         }
 
-        .template-professional .cv-heading {
-            color: #1e3a8a;
-            border-bottom-color: #1e3a8a;
+        .cv-meta {
+            color: #777;
+            font-size: 11px;
+            margin-bottom: 7px;
         }
 
-        /* EXECUTIVE TEMPLATE */
-        .template-executive {
-            border-top: 12px solid #1f2937;
+        .cv-item p {
+            font-size: 12px;
+            line-height: 1.65;
+            white-space: pre-line;
+            color: #444;
         }
 
-        .template-executive .cv-personal-header {
-            background: #1f2937;
+        .cv-body {
+            padding: 38px 48px;
+        }
+
+        .cv-layout {
+            display: grid;
+            grid-template-columns: 265px 1fr;
+            min-height: 1100px;
+        }
+
+        .cv-sidebar {
+            padding: 32px 23px;
+            background: var(--accent);
             color: white;
-            padding: 28px;
-            border: none;
-            margin: -55px -55px 30px;
         }
 
-        .template-executive .cv-name {
+        .cv-sidebar .cv-photo {
+            display: block;
+            margin: 0 auto 27px;
+            width: 125px;
+            height: 125px;
+        }
+
+        .cv-sidebar h2 {
+            font-size: 13px;
+            letter-spacing: 1.5px;
+            text-transform: uppercase;
+            border-bottom: 1px solid rgba(255,255,255,.55);
+            padding-bottom: 8px;
+            margin: 25px 0 12px;
             color: white;
         }
 
-        .template-executive .cv-personal-header p,
-        .template-executive .cv-personal-header div,
-        .template-executive .cv-personal-header span {
-            color: #f3f4f6;
+        .cv-sidebar .cv-contact {
+            font-size: 11px;
+            line-height: 1.9;
+            overflow-wrap: anywhere;
         }
 
-        .template-executive .cv-accent {
-            color: #a16207 !important;
+        .cv-sidebar .cv-skills {
+            padding-left: 17px;
+            margin: 0;
         }
 
-        .template-executive .cv-heading {
-            color: #a16207;
-            border-bottom-color: #a16207;
+        .cv-sidebar .cv-skills li {
+            font-size: 11px;
+            margin-bottom: 9px;
+            line-height: 1.5;
         }
 
-        @media(max-width: 640px) {
+        .cv-main {
+            padding: 38px 35px;
+            min-width: 0;
+        }
+
+        .cv-skills {
+            padding: 0;
+            margin: 0;
+            list-style: none;
+        }
+
+        .cv-skills li {
+            display: inline-block;
+            background: var(--soft);
+            color: var(--accent);
+            border-radius: 4px;
+            padding: 7px 10px;
+            margin: 3px 4px 4px 0;
+            font-size: 11px;
+        }
+
+        /* Corporate Blue */
+        .template-corporate_blue .cv-sidebar {
+            background: #E3E3E3;
+            color: #252525;
+            border-right: 1px solid #d1d5db;
+        }
+
+        .template-corporate_blue .cv-sidebar h2 {
+            color: #173B70;
+            border-color: #173B70;
+        }
+
+        .template-corporate_blue .cv-sidebar .cv-contact {
+            color: #374151;
+        }
+
+        .template-corporate_blue .cv-sidebar .cv-photo {
+            border-color: white;
+        }
+
+        /* Modern Green */
+        .template-modern_green .cv-sidebar {
+            background: #176B48;
+        }
+
+        .template-modern_green .cv-main {
+            border-top: 8px solid #B8DCC5;
+        }
+
+        /* Elegant Teal */
+        .template-elegant_teal .cv-layout {
+            grid-template-columns: 1fr 250px;
+        }
+
+        .template-elegant_teal .cv-sidebar {
+            grid-column: 2;
+            grid-row: 1;
+            background: #E5F4F4;
+            color: #164D50;
+        }
+
+        .template-elegant_teal .cv-sidebar h2 {
+            color: #087E83;
+            border-color: #8FCAC8;
+        }
+
+        .template-elegant_teal .cv-sidebar .cv-contact {
+            color: #164D50;
+        }
+
+        .template-elegant_teal .cv-sidebar .cv-photo {
+            border-color: #087E83;
+        }
+
+        .template-elegant_teal .cv-main {
+            grid-column: 1;
+            grid-row: 1;
+        }
+
+        /* Classic Luxury */
+        .template-classic_luxury .cv-sidebar {
+            background: #F3ECE4;
+            color: #4B3829;
+            border-right: 5px solid #B89A70;
+        }
+
+        .template-classic_luxury .cv-sidebar h2 {
+            color: #76563C;
+            border-color: #B89A70;
+        }
+
+        .template-classic_luxury .cv-sidebar .cv-contact {
+            color: #4B3829;
+        }
+
+        .template-classic_luxury .cv-sidebar .cv-photo {
+            border-color: #B89A70;
+        }
+
+        .template-classic_luxury .cv-main {
+            font-family: Georgia, serif;
+        }
+
+        /* Executive Gold */
+        .template-executive_gold .cv-header {
+            text-align: center;
+            background: #24211D;
+            border-bottom: 8px solid #B58A35;
+        }
+
+        .template-executive_gold .cv-header-photo {
+            float: none;
+            display: block;
+            margin: 0 auto 15px;
+            border-color: #B58A35;
+        }
+
+        .template-executive_gold .cv-section h2 {
+            color: #A77C27;
+            border-bottom: 1px solid #D8BC7B;
+        }
+
+        .template-executive_gold .cv-body {
+            padding-left: 75px;
+            padding-right: 75px;
+        }
+
+        /* Burgundy */
+        .template-burgundy .cv-header {
+            background: white;
+            color: #252525;
+            border-top: 14px solid #76263D;
+            border-bottom: 1px solid #ddd;
+        }
+
+        .template-burgundy .cv-header .cv-role,
+        .template-burgundy .cv-header .cv-contact {
+            color: #555;
+        }
+
+        .template-burgundy .cv-header-photo {
+            border-color: #76263D;
+        }
+
+        .template-burgundy .cv-body {
+            border-left: 12px solid #F6E8EC;
+        }
+
+        /* Creative Purple */
+        .template-creative_purple .cv-header {
+            background: linear-gradient(120deg, #42246E, #8059B5);
+            border-radius: 0 0 55px 0;
+        }
+
+        .template-creative_purple .cv-body {
+            padding-top: 45px;
+        }
+
+        .template-creative_purple .cv-section h2 {
+            border-left: 5px solid #6841A5;
+            border-bottom: 1px solid #ddd;
+            padding-left: 12px;
+        }
+
+        /* Minimalist Grey */
+        .template-minimalist_grey .cv-header {
+            background: #F1F2F3;
+            color: #222;
+            border-bottom: 1px solid #ccc;
+        }
+
+        .template-minimalist_grey .cv-header .cv-contact {
+            color: #555;
+        }
+
+        .template-minimalist_grey .cv-header-photo {
+            border-color: #777;
+        }
+
+        .template-minimalist_grey .cv-section h2 {
+            color: #333;
+            border-bottom: 1px solid #999;
+        }
+
+        .template-minimalist_grey .cv-body {
+            padding-left: 75px;
+            padding-right: 75px;
+        }
+
+        /* Modern Orange */
+        .template-modern_orange .cv-header {
+            background: linear-gradient(120deg, #A94312, #E47B35);
+            border-bottom: 10px solid #F6C29E;
+        }
+
+        .template-modern_orange .cv-body {
+            background: #FFFCF9;
+        }
+
+        .template-modern_orange .cv-section {
+            padding: 15px;
+            border-left: 4px solid #C65A19;
+            background: #FFF8F2;
+        }
+
+        /* Premium Navy */
+        .template-premium_navy .cv-header {
+            background: #172B4D;
+            border-bottom: 7px solid #AEBBD0;
+        }
+
+        .template-premium_navy .cv-item {
+            border-left: 3px solid #AEBBD0;
+            padding-left: 17px;
+            margin-left: 5px;
+        }
+
+        .template-premium_navy .cv-section h2 {
+            border-bottom: 1px solid #AEBBD0;
+        }
+
+        /* Basic */
+        .template-simple .cv-header {
+            background: white;
+            color: #222;
+            border-bottom: 4px solid #26734D;
+        }
+
+        .template-simple .cv-header .cv-contact {
+            color: #4b5563;
+        }
+
+        .template-simple .cv-header-photo {
+            border-color: #26734D;
+        }
+
+        .template-professional .cv-header {
+            background: #173B70;
+        }
+
+        .template-executive .cv-header {
+            background: #24211D;
+            border-bottom: 6px solid #B58A35;
+        }
+
+        .preview-toolbar {
+            max-width: 1100px;
+            margin: 25px auto 0;
+            padding: 20px;
+            background: white;
+            border-radius: 12px;
+        }
+
+        @media(max-width: 950px) {
             .cv-paper {
-                padding: 25px;
-                min-height: auto;
+                width: 100%;
+                margin: 15px auto;
+            }
+        }
+
+        @media(max-width: 650px) {
+            .cv-layout {
+                display: block;
             }
 
-            .template-executive .cv-personal-header {
-                margin: -25px -25px 25px;
-                padding: 25px;
+            .cv-sidebar,
+            .cv-main,
+            .cv-body {
+                padding: 25px 20px;
+            }
+
+            .template-elegant_teal .cv-sidebar {
+                display: block;
+            }
+
+            .cv-header {
+                padding: 30px 22px;
+            }
+
+            .cv-name {
+                font-size: 23px;
+            }
+
+            .cv-photo {
+                width: 85px;
+                height: 85px;
             }
         }
 
         @media print {
-            body {
-                background: white;
-            }
+            body { background: white; }
+
+            .no-print { display: none !important; }
 
             .cv-paper {
-                box-shadow: none;
+                width: 100%;
+                min-height: 0;
                 margin: 0;
-                max-width: none;
+                box-shadow: none;
+            }
+
+            .cv-layout {
+                min-height: 0;
             }
         }
     </style>
@@ -141,345 +538,280 @@
 
 <body>
 
-<header class="bg-white border-b">
-    <div class="max-w-6xl mx-auto px-5 py-4 flex justify-between items-center">
-
-        <a href="{{ route('home') }}"
-           class="text-2xl font-extrabold text-gray-900">
-            Naija<span class="text-blue-700">CV</span>.
-        </a>
-
-        <span class="text-sm text-green-700 font-semibold">
-            CV Created Successfully
-        </span>
-
-    </div>
-</header>
-
-<main class="max-w-6xl mx-auto px-4 py-10">
-
-    <!-- SUCCESS MESSAGE -->
-    <div class="bg-green-50 border border-green-200 rounded-xl p-5 mb-7">
-
-        <h1 class="font-bold text-green-800 text-lg">
-            Your CV has been created!
-        </h1>
-
-        <p class="text-sm text-green-700 mt-1">
-            Review your information below. Your guest CV is temporarily
-            available through this private link.
-        </p>
-
-        <p class="text-xs text-green-700 mt-2">
-            Guest CV expiry:
-            {{ $cv->expires_at?->format('d M Y, h:i A') }}
-        </p>
-
-    </div>
-
-    <!-- SELECTED CV TEMPLATE -->
-    <article class="cv-paper template-{{ $cv->template }}">
-
-        <!-- PERSONAL DETAILS -->
-        <div class="cv-personal-header">
-
-            <h1 class="cv-name text-3xl md:text-4xl font-extrabold uppercase">
-                {{ $cv->full_name }}
-            </h1>
-
-            @if($cv->professional_title)
-                <p class="cv-accent text-lg font-semibold mt-2">
-                    {{ $cv->professional_title }}
+    <div class="no-print preview-toolbar">
+        <div class="flex flex-col md:flex-row md:items-center md:justify-between gap-4">
+            <div>
+                <a href="{{ route('home') }}" class="text-blue-700 font-bold">NaijaCV</a>
+                <h1 class="text-xl font-extrabold mt-2">Your CV is ready to preview</h1>
+                <p class="text-sm text-gray-500">
+                    {{ $templateLabel }} ·
+                    {{ $isFree ? 'Free design' : 'Premium design — ₦3,000' }}
                 </p>
-            @endif
-
-            <div class="flex flex-wrap gap-x-5 gap-y-2 text-sm text-gray-600 mt-4">
-
-                <span>{{ $cv->email }}</span>
-
-                <span>{{ $cv->phone }}</span>
-
-                @if($cv->address)
-                    <span>{{ $cv->address }}</span>
-                @endif
-
             </div>
 
+            <div class="flex flex-wrap gap-2">
+                @if($isFree || $isPaid)
+                    <a href="{{ route('guest-cvs.download', ['token' => $cv->guest_token]) }}"
+                       class="bg-green-600 hover:bg-green-700 text-white font-bold px-5 py-3 rounded-lg">
+                        Download PDF
+                    </a>
+                @elseif($isPremium = array_key_exists($template, $premiumNames))
+                    <form method="POST" action="{{ route('guest-cvs.pay', ['token' => $cv->guest_token]) }}">
+                        @csrf
+                        <button class="bg-blue-700 hover:bg-blue-800 text-white font-bold px-5 py-3 rounded-lg">
+                            Pay ₦3,000 & Download
+                        </button>
+                    </form>
+
+                    @if($cv->payment_reference)
+                        <a href="{{ route('guest-cvs.recover', ['token' => $cv->guest_token]) }}"
+                           class="border border-green-600 text-green-700 font-semibold px-4 py-3 rounded-lg">
+                            I have paid — Recover CV
+                        </a>
+                    @endif
+                @endif
+            </div>
         </div>
 
-        <!-- PROFESSIONAL SUMMARY -->
-        @if($cv->summary)
-
-            <section class="cv-section">
-
-                <h2 class="cv-heading">
-                    Professional Summary
-                </h2>
-
-                <p class="text-gray-700 text-sm leading-7 whitespace-pre-line">
-                    {{ $cv->summary }}
-                </p>
-
-            </section>
-
+        @if(session('error'))
+            <div class="mt-4 bg-red-50 text-red-700 border border-red-200 rounded-lg p-4">
+                {{ session('error') }}
+            </div>
         @endif
 
-        <!-- WORK EXPERIENCE -->
-        @if($cv->experiences->isNotEmpty())
+        @if(session('success'))
+            <div class="mt-4 bg-green-50 text-green-700 border border-green-200 rounded-lg p-4">
+                {{ session('success') }}
+            </div>
+        @endif
 
-            <section class="cv-section">
+        @if(!$isFree && !$isPaid)
+            <p class="text-sm text-gray-600 mt-3">
+                Your premium design is available to preview. Complete the ₦3,000 payment
+                to unlock its PDF download.
+            </p>
+        @endif
+    </div>
 
-                <h2 class="cv-heading">
-                    Work Experience
-                </h2>
+    <main class="cv-paper template-{{ $template }}">
 
-                @foreach($cv->experiences as $experience)
+        @if($hasSidebar)
 
-                    <div class="mb-6">
+            <div class="cv-layout">
 
-                        <h3 class="font-bold text-gray-900">
-                            {{ $experience->job_title }}
-                        </h3>
+                <aside class="cv-sidebar">
 
-                        <p class="cv-accent font-semibold text-sm">
-                            {{ $experience->company }}
-                        </p>
+                    @if($photo)
+                        <img class="cv-photo" src="{{ $photo }}" alt="Profile photograph">
+                    @endif
 
-                        <p class="text-gray-500 text-xs mt-1">
-
-                            {{ $experience->start_date?->format('M Y') ?? 'Start date not specified' }}
-
-                            —
-
-                            {{ $experience->currently_working
-                                ? 'Present'
-                                : ($experience->end_date?->format('M Y') ?? 'End date not specified') }}
-
-                        </p>
-
-                        @if($experience->duties)
-
-                            <p class="text-gray-700 text-sm leading-6 mt-2 whitespace-pre-line">
-                                {{ $experience->duties }}
-                            </p>
-
+                    <h2>Contact</h2>
+                    <div class="cv-contact">
+                        {{ $cv->email }}<br>
+                        {{ $cv->phone }}
+                        @if($cv->address)
+                            <br>{{ $cv->address }}
                         @endif
-
                     </div>
 
-                @endforeach
+                    @if($cv->skills->count())
+                        <h2>Skills</h2>
+                        <ul class="cv-skills">
+                            @foreach($cv->skills as $skill)
+                                <li>
+                                    {{ $skill->name }}
+                                    @if($skill->proficiency)
+                                        — {{ $skill->proficiency }}
+                                    @endif
+                                </li>
+                            @endforeach
+                        </ul>
+                    @endif
 
-            </section>
+                </aside>
 
-        @endif
+                <div class="cv-main">
 
-        <!-- EDUCATION -->
-        @if($cv->educations->isNotEmpty())
+                    <h1 class="cv-name">{{ $cv->full_name }}</h1>
 
-            <section class="cv-section">
-
-                <h2 class="cv-heading">
-                    Education
-                </h2>
-
-                @foreach($cv->educations as $education)
-
-                    <div class="mb-5">
-
-                        <h3 class="font-bold text-gray-900">
-                            {{ $education->qualification }}
-                        </h3>
-
-                        <p class="cv-accent text-sm font-semibold">
-                            {{ $education->institution }}
-                        </p>
-
-                        @if($education->field_of_study)
-
-                            <p class="text-gray-600 text-sm">
-                                {{ $education->field_of_study }}
-                            </p>
-
-                        @endif
-
-                        @if($education->start_year || $education->end_year)
-
-                            <p class="text-gray-500 text-xs mt-1">
-                                {{ $education->start_year }}
-
-                                @if($education->end_year)
-                                    — {{ $education->end_year }}
-                                @endif
-                            </p>
-
-                        @endif
-
-                        @if($education->description)
-
-                            <p class="text-gray-700 text-sm mt-2">
-                                {{ $education->description }}
-                            </p>
-
-                        @endif
-
-                    </div>
-
-                @endforeach
-
-            </section>
-
-        @endif
-
-        <!-- SKILLS -->
-        @if($cv->skills->isNotEmpty())
-
-            <section class="cv-section">
-
-                <h2 class="cv-heading">
-                    Skills
-                </h2>
-
-                <div class="grid grid-cols-1 sm:grid-cols-2 gap-3">
-
-                    @foreach($cv->skills as $skill)
-
-                        <div class="text-sm text-gray-700">
-
-                            <span class="font-semibold">
-                                {{ $skill->name }}
-                            </span>
-
-                            @if($skill->proficiency)
-
-                                <span class="text-gray-500">
-                                    — {{ $skill->proficiency }}
-                                </span>
-
-                            @endif
-
+                    @if($cv->professional_title)
+                        <div class="cv-role" style="color:{{ $accent }}">
+                            {{ $cv->professional_title }}
                         </div>
+                    @endif
 
-                    @endforeach
+                    @if($cv->summary)
+                        <section class="cv-section">
+                            <h2>Professional Profile</h2>
+                            <p>{{ $cv->summary }}</p>
+                        </section>
+                    @endif
+
+                    @if($cv->experiences->count())
+                        <section class="cv-section">
+                            <h2>Work Experience</h2>
+
+                            @foreach($cv->experiences as $experience)
+                                <div class="cv-item">
+                                    <h3>{{ $experience->job_title }} — {{ $experience->company }}</h3>
+                                    <div class="cv-meta">
+                                        {{ $experience->start_date }}
+                                        @if($experience->currently_working)
+                                            — Present
+                                        @elseif($experience->end_date)
+                                            — {{ $experience->end_date }}
+                                        @endif
+                                    </div>
+                                    @if($experience->duties)
+                                        <p>{{ $experience->duties }}</p>
+                                    @endif
+                                </div>
+                            @endforeach
+                        </section>
+                    @endif
+
+                    @if($cv->educations->count())
+                        <section class="cv-section">
+                            <h2>Education</h2>
+
+                            @foreach($cv->educations as $education)
+                                <div class="cv-item">
+                                    <h3>
+                                        {{ $education->qualification }}
+                                        @if($education->field_of_study)
+                                            — {{ $education->field_of_study }}
+                                        @endif
+                                    </h3>
+                                    <div class="cv-meta">
+                                        {{ $education->institution }}
+                                        @if($education->start_year)
+                                            | {{ $education->start_year }}
+                                        @endif
+                                        @if($education->end_year)
+                                            — {{ $education->end_year }}
+                                        @endif
+                                    </div>
+                                    @if($education->description)
+                                        <p>{{ $education->description }}</p>
+                                    @endif
+                                </div>
+                            @endforeach
+                        </section>
+                    @endif
 
                 </div>
+            </div>
 
-            </section>
+        @else
 
-        @endif
+            <header class="cv-header">
 
-    </article>
-
-    <!-- NEXT ACTION -->
-    <div class="max-w-3xl mx-auto text-center mt-10">
-
-        <h2 class="text-2xl font-extrabold">
-            Your CV is ready!
-        </h2>
-
-        <p class="text-gray-500 mt-2">
-            Your selected design is
-            <strong>
-                @if($cv->template === 'simple')
-                    Basic CV
-                @elseif($cv->template === 'professional')
-                    Professional CV
-                @else
-                    Executive CV
+                @if($photo)
+                    <img class="cv-photo cv-header-photo" src="{{ $photo }}" alt="Profile photograph">
                 @endif
-            </strong>.
-        </p>
 
-        <!-- BASIC / FREE CV -->
-        @if($cv->template === 'simple' && $cv->payment_status === 'free' && !$cv->is_paid)
+                <h1 class="cv-name">{{ $cv->full_name }}</h1>
 
-            <p class="text-gray-500 text-sm mt-2">
-                Your Basic CV is free. You can download it as a PDF.
-            </p>
+                @if($cv->professional_title)
+                    <div class="cv-role">{{ $cv->professional_title }}</div>
+                @endif
 
-            <div class="flex flex-col sm:flex-row justify-center gap-4 mt-7">
+                <div class="cv-contact">
+                    {{ $cv->email }}
+                    @if($cv->phone)
+                        &nbsp; | &nbsp; {{ $cv->phone }}
+                    @endif
+                    @if($cv->address)
+                        <br>{{ $cv->address }}
+                    @endif
+                </div>
+            </header>
 
-                <a
-                    href="{{ route('guest-cvs.download', $cv->guest_token) }}"
-                    class="inline-block bg-green-600 hover:bg-green-700 text-white px-7 py-4 rounded-xl font-bold"
-                >
-                    ↓ Download Free CV (PDF)
-                </a>
+            <div class="cv-body">
 
-                <a
-                    href="{{ route('guest-cvs.create') }}"
-                    class="inline-block bg-gray-200 hover:bg-gray-300 text-gray-700 px-7 py-4 rounded-xl font-bold"
-                >
-                    Create Another CV
-                </a>
+                @if($cv->summary)
+                    <section class="cv-section">
+                        <h2>Professional Profile</h2>
+                        <p>{{ $cv->summary }}</p>
+                    </section>
+                @endif
+
+                @if($cv->experiences->count())
+                    <section class="cv-section">
+                        <h2>Work Experience</h2>
+
+                        @foreach($cv->experiences as $experience)
+                            <div class="cv-item">
+                                <h3>{{ $experience->job_title }} — {{ $experience->company }}</h3>
+                                <div class="cv-meta">
+                                    {{ $experience->start_date }}
+                                    @if($experience->currently_working)
+                                        — Present
+                                    @elseif($experience->end_date)
+                                        — {{ $experience->end_date }}
+                                    @endif
+                                </div>
+                                @if($experience->duties)
+                                    <p>{{ $experience->duties }}</p>
+                                @endif
+                            </div>
+                        @endforeach
+                    </section>
+                @endif
+
+                @if($cv->educations->count())
+                    <section class="cv-section">
+                        <h2>Education</h2>
+
+                        @foreach($cv->educations as $education)
+                            <div class="cv-item">
+                                <h3>
+                                    {{ $education->qualification }}
+                                    @if($education->field_of_study)
+                                        — {{ $education->field_of_study }}
+                                    @endif
+                                </h3>
+                                <div class="cv-meta">
+                                    {{ $education->institution }}
+                                    @if($education->start_year)
+                                        | {{ $education->start_year }}
+                                    @endif
+                                    @if($education->end_year)
+                                        — {{ $education->end_year }}
+                                    @endif
+                                </div>
+                                @if($education->description)
+                                    <p>{{ $education->description }}</p>
+                                @endif
+                            </div>
+                        @endforeach
+                    </section>
+                @endif
+
+                @if($cv->skills->count())
+                    <section class="cv-section">
+                        <h2>Skills</h2>
+                        <ul class="cv-skills">
+                            @foreach($cv->skills as $skill)
+                                <li>
+                                    {{ $skill->name }}
+                                    @if($skill->proficiency)
+                                        · {{ $skill->proficiency }}
+                                    @endif
+                                </li>
+                            @endforeach
+                        </ul>
+                    </section>
+                @endif
 
             </div>
-
-        @elseif(in_array($cv->template, ['professional', 'executive']) && $cv->payment_status === 'paid' && $cv->is_paid)
-
-            <div class="alert alert-success">
-                <h4>Payment Successful!</h4>
-                <p>Your premium CV has been unlocked.</p>
-            </div>
-
-            <a href="{{ route('guest-cvs.download', $cv->guest_token) }}"
-               class="btn btn-success">
-                Download Premium CV
-            </a>
-
-        @elseif(in_array($cv->template, ['professional', 'executive']))
-
-            <div class="alert alert-warning">
-                <h4>Unlock Your Premium CV</h4>
-
-                <p>
-                    You selected the
-                    <strong>{{ ucfirst($cv->template) }} Template</strong>.
-                </p>
-
-                <h3>₦3,000</h3>
-
-                <p>
-                    Complete your payment to download your professional CV in PDF format.
-                </p>
-
-                <form action="{{ route('guest-cvs.pay', $cv->guest_token) }}"
-                      method="POST">
-                    @csrf
-
-                   <button type="submit" class="paystack-button flex-1 bg-blue-600 hover:bg-blue-700 text-white text-center font-bold py-4 px-6 rounded-xl shadow-sm">
-    <span>Pay ₦3,000 with Paystack</span>
-    <span>→</span>
-</button>
-                </form>
-                <div style="margin-top: 18px; text-align: center;">
-
-    <p style="font-size: 14px; color: #666;">
-        Already completed your payment?
-    </p>
-
-    <a href="{{ route('guest-cvs.recover', $cv->guest_token) }}"
-       style="
-           display: inline-block;
-           padding: 12px 22px;
-           border: 1px solid #087443;
-           color: #087443;
-           border-radius: 8px;
-           text-decoration: none;
-           font-weight: 600;
-       ">
-        I've Already Paid — Recover My CV
-    </a>
-
-</div>
-            </div>
-
         @endif
 
-</main>
+    </main>
 
-<footer class="text-center py-7 text-sm text-gray-500">
-    © {{ date('Y') }} NaijaCV. All rights reserved.
-</footer>
+    <footer class="no-print text-center text-xs text-gray-500 py-8">
+        Created with NaijaCV · Build your CV. Get hired. Move forward.
+    </footer>
 
 </body>
 </html>
