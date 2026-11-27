@@ -286,8 +286,7 @@
                                 name="package_choice"
                                 value="simple"
                                 class="peer sr-only"
-                                x-model="selectedPackage"
-                                >
+                                x-model="selectedPackage">
 
                             <div class="border-2 rounded-xl p-5 h-full
                         peer-checked:border-green-600

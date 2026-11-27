@@ -77,7 +77,18 @@ Route::middleware(['auth', 'verified'])->group(function () {
         DashboardController::class,
         'index'
     ])->name('dashboard');
+Route::middleware(['auth', 'verified'])->group(function () {
+    Route::get('/dashboard', [DashboardController::class, 'index'])
+        ->name('dashboard');
 
+    Route::get('/cvs/{cv}/download', [CvController::class, 'download'])
+        ->name('cvs.download');
+
+    Route::resource('cvs', CvController::class);
+
+    Route::resource('jobs', JobApplicationController::class)
+        ->except(['show']);
+});
     Route::resource('cvs', CvController::class);
 
     Route::resource('jobs', JobApplicationController::class)
