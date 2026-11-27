@@ -41,7 +41,7 @@
         @js($experienceItems),
         @js($skillItems)
     )"
-    class="space-y-10"
+    class="space-y-10 cv-builder"
 >
     {{-- BASIC INFORMATION --}}
     <section>

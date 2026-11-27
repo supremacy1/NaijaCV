@@ -60,22 +60,54 @@
                         </div>
                     </div>
 
-                    <div class="flex gap-2 mt-6">
-                        <a href="{{ route('cvs.edit', $cv) }}"
-                           class="flex-1 text-center bg-blue-600 text-white rounded-lg py-2 text-sm">
-                            Edit CV
+                    <div class="grid grid-cols-2 gap-2 mt-6">
+                        <a href="{{ route('cvs.show', $cv) }}"
+                           class="text-center bg-blue-600 text-white rounded-lg py-2.5 text-sm font-semibold">
+                            Preview CV
                         </a>
 
-                        <form action="{{ route('cvs.destroy', $cv) }}"
-                              method="POST"
-                              onsubmit="return confirm('Delete this CV?')">
-                            @csrf
-                            @method('DELETE')
+                        @if(!($cv->is_paid && $cv->payment_status === 'paid'))
+                            <a href="{{ route('cvs.edit', $cv) }}"
+                               class="text-center bg-gray-100 text-gray-700 hover:bg-gray-200 rounded-lg py-2.5 text-sm font-semibold">
+                                Edit CV
+                            </a>
+                        @else
+                            <span class="flex items-center justify-center bg-gray-50 text-gray-500 rounded-lg py-2.5 text-xs font-semibold">
+                                Paid · locked
+                            </span>
+                        @endif
 
-                            <button class="bg-red-50 text-red-600 rounded-lg px-3 py-2 text-sm">
+                        @if(!($cv->is_paid && $cv->payment_status === 'paid'))
+                            <button type="button"
+                                    x-data=""
+                                    x-on:click.prevent="$dispatch('open-modal', 'confirm-cv-deletion-{{ $cv->id }}')"
+                                    class="bg-red-50 text-red-600 rounded-lg px-3 py-2.5 text-sm font-semibold">
                                 Delete
                             </button>
-                        </form>
+
+                            <x-modal name="confirm-cv-deletion-{{ $cv->id }}" focusable>
+                                <form action="{{ route('cvs.destroy', $cv) }}" method="POST" class="p-6">
+                                    @csrf
+                                    @method('DELETE')
+
+                                    <h2 class="text-lg font-bold text-gray-900">
+                                        Delete this CV?
+                                    </h2>
+                                    <p class="mt-2 text-sm text-gray-600">
+                                        “{{ $cv->title }}” will be permanently removed from your account.
+                                    </p>
+
+                                    <div class="mt-6 flex justify-end gap-3">
+                                        <x-secondary-button type="button" x-on:click="$dispatch('close')">
+                                            Cancel
+                                        </x-secondary-button>
+                                        <x-danger-button>
+                                            Delete CV
+                                        </x-danger-button>
+                                    </div>
+                                </form>
+                            </x-modal>
+                        @endif
                     </div>
 
                 </div>

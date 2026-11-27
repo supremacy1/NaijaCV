@@ -59,30 +59,14 @@
 
 
 
-                <div class="flex items-center gap-4 text-sm">
-<div class="flex items-center gap-4 text-sm">
-    <a href="{{ route('dashboard') }}"
-        class="text-gray-600 hover:text-blue-600">
-        Dashboard
-    </a>
-
-    <a href="{{ route('cvs.index') }}"
-        class="bg-blue-600 text-white px-4 py-2 rounded-lg font-semibold">
-        My CVs
-    </a>
-</div>
-
-
-
-                    <a href="{{ route('register') }}"
-
-                        class="bg-blue-600 text-white px-4 py-2 rounded-lg font-semibold">
-
-                        Create Account
-
+                <nav class="flex items-center gap-3 text-sm">
+                    <a href="{{ route('dashboard') }}" class="text-gray-600 hover:text-blue-600">
+                        Dashboard
                     </a>
-
-                </div>
+                    <a href="{{ route('cvs.index') }}" class="bg-blue-600 text-white px-4 py-2 rounded-lg font-semibold">
+                        My CVs
+                    </a>
+                </nav>
 
 
 
@@ -104,11 +88,11 @@
 
 
 
-                <a href="{{ route('home') }}"
+                <a href="{{ route('cvs.index') }}"
 
                     class="text-sm text-blue-600 hover:underline">
 
-                    ← Back to Home
+                    ← Back to My CVs
 
                 </a>
 
@@ -124,9 +108,7 @@
 
                 <p class="text-gray-500 mt-2">
 
-                    Complete the form below to create your CV.
-
-Your CV will be saved securely to your NaijaCV account.
+                    Complete the form to preview your CV first. It will only be saved to your account if you choose Save CV on the preview page.
                 </p>
 
 
@@ -136,17 +118,10 @@ Your CV will be saved securely to your NaijaCV account.
 
 
                     <span class="bg-green-100 text-green-700 px-4 py-2 rounded-full text-sm font-semibold">
-
-                        Free CV Creation
-
+                        Free or premium CV designs
                     </span>
-
-
-
                     <span class="bg-blue-100 text-blue-700 px-4 py-2 rounded-full text-sm font-semibold">
-
-                        No Account Required
-
+                        Preview before saving
                     </span>
 
 
@@ -197,17 +172,18 @@ Your CV will be saved securely to your NaijaCV account.
 
             <form
 
-action="{{ route('cvs.store') }}"
+action="{{ route('cvs.preview.create') }}"
                 method="POST"
 
                 enctype="multipart/form-data"
                 x-data="guestCvForm()"
 
-                class="space-y-7">
+                class="space-y-7 create-cv-form">
 
 
 
                 @csrf
+                <input type="hidden" name="draft_id" value="{{ old('draft_id') }}">
 
                 <!-- DOCUMENT INFORMATION -->
 
@@ -269,13 +245,13 @@ action="{{ route('cvs.store') }}"
 
 
                 <!-- CV TEMPLATE SELECTION -->
-                <section class="bg-white border rounded-2xl shadow-sm p-6 md:p-8"
+                <section class="bg-white border rounded-2xl shadow-sm p-6 md:p-8 template-picker"
                     x-data="templateChooser()">
 
                     <div class="mb-6">
                         <h2 class="text-xl font-bold">2. Choose Your CV Package</h2>
                         <p class="text-sm text-gray-500 mt-1">
-                            Select a free CV or browse our premium professional designs.
+                            Select a free CV or browse premium designs. The preview updates as you move between templates.
                         </p>
                     </div>
 
@@ -337,7 +313,8 @@ action="{{ route('cvs.store') }}"
                             </p>
 
                             <!-- CURRENT PREMIUM TEMPLATE -->
-                            <div class="bg-white rounded-lg border overflow-hidden">
+                            <div class="template-live-preview bg-white rounded-lg border overflow-hidden"
+                                aria-live="polite">
 
                                 <div class="h-48 flex"
                                     :style="'background:' + currentTemplate.soft">
@@ -368,7 +345,10 @@ action="{{ route('cvs.store') }}"
 
                                 <div class="p-4">
                                     <div class="flex justify-between items-center gap-2">
-                                        <h4 class="font-bold" x-text="currentTemplate.name"></h4>
+                                        <div class="flex items-center gap-2 min-w-0">
+                                            <h4 class="font-bold truncate" x-text="currentTemplate.name"></h4>
+                                            <span class="template-preview-badge">Preview</span>
+                                        </div>
                                         <span class="text-xs text-blue-700 font-bold"
                                             x-text="(templateIndex + 1) + ' / 10'"></span>
                                     </div>
@@ -382,12 +362,13 @@ action="{{ route('cvs.store') }}"
                             </div>
 
                             <!-- SLIDER CONTROLS -->
-                            <div class="flex items-center justify-between mt-4 gap-3">
+                            <div class="template-carousel-controls flex items-center justify-between mt-4 gap-3">
 
                                 <button type="button"
                                     @click="previousTemplate()"
-                                    class="px-4 py-2 border rounded-lg hover:bg-gray-100">
-                                    ← Previous
+                                    aria-label="Preview previous premium template"
+                                    class="template-carousel-button px-4 py-2 border rounded-lg hover:bg-gray-100">
+                                    <span aria-hidden="true">←</span><span>Previous</span>
                                 </button>
 
                                 <div class="flex gap-1.5">
@@ -395,10 +376,11 @@ action="{{ route('cvs.store') }}"
                                         :key="item.id">
                                         <button type="button"
                                             @click="templateIndex = index; selectedPackage = 'paid'"
-                                            class="w-2.5 h-2.5 rounded-full"
+                                            class="template-carousel-dot w-2.5 h-2.5 rounded-full"
                                             :class="templateIndex === index
                                     ? 'bg-blue-700'
                                     : 'bg-gray-300'"
+                                            :aria-current="templateIndex === index ? 'true' : null"
                                             :aria-label="'View ' + item.name">
                                         </button>
                                     </template>
@@ -406,8 +388,9 @@ action="{{ route('cvs.store') }}"
 
                                 <button type="button"
                                     @click="nextTemplate()"
-                                    class="px-4 py-2 border rounded-lg hover:bg-gray-100">
-                                    Next →
+                                    aria-label="Preview next premium template"
+                                    class="template-carousel-button px-4 py-2 border rounded-lg hover:bg-gray-100">
+                                    <span>Next template</span><span aria-hidden="true">→</span>
                                 </button>
                             </div>
 
@@ -1627,9 +1610,8 @@ action="{{ route('cvs.store') }}"
 
                     <p class="text-blue-800 text-sm mt-2">
 
-                        You can preview your selected design after completing this form.
-
-                        Basic CV downloads are free. Premium CV downloads cost ₦3,000.
+                        Save your details to open a full preview of your CV. You can review it
+                        before downloading; premium CV downloads cost ₦3,000.
 
                     </p>
 
@@ -1651,7 +1633,7 @@ action="{{ route('cvs.store') }}"
 
                         class="flex-1 bg-blue-600 hover:bg-blue-700 text-white text-center font-bold py-4 px-6 rounded-xl shadow-sm">
 
-                        Create My CV →
+                        Preview My CV →
 
                     </button>
 
@@ -1659,7 +1641,7 @@ action="{{ route('cvs.store') }}"
 
                     <a
 
-                        href="{{ route('home') }}"
+                        href="{{ route('cvs.index') }}"
 
                         class="text-center bg-gray-200 hover:bg-gray-300 text-gray-700 font-semibold py-4 px-6 rounded-xl">
 

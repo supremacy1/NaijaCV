@@ -1,5 +1,6 @@
 @php
-$template = $cv->template ?? 'simple';
+$template = $previewTemplate ?? $cv->template ?? 'simple';
+$isDraft = $isDraft ?? false;
 
 $themes = [
 'simple' => ['name' => 'Free Professional', 'primary' => '#26734D', 'soft' => '#E8F3EC', 'text' => '#263238'],
@@ -37,13 +38,25 @@ $sidebarTemplates = [
 
 $hasSidebar = in_array($template, $sidebarTemplates, true);
 
-$photoUrl = $cv->photo_path
+$photoUrl = $previewPhotoUrl ?? ($cv->photo_path
 ? asset('storage/' . $cv->photo_path)
-: null;
+: null);
+
+$previewChoices = array_merge(['simple'], $premiumTemplates ?? [], ['professional', 'modern', 'executive']);
+$previewChoiceIndex = array_search($template, $previewChoices, true);
+$previewChoiceIndex = $previewChoiceIndex === false ? 0 : $previewChoiceIndex;
+$previousPreviewTemplate = $previewChoices[
+    ($previewChoiceIndex - 1 + count($previewChoices)) % count($previewChoices)
+];
+$nextPreviewTemplate = $previewChoices[
+    ($previewChoiceIndex + 1) % count($previewChoices)
+];
 @endphp
 
 <x-app-layout>
-    <div class="min-h-screen bg-gray-100 py-8 px-4">
+    <div id="cv-preview-async-content"
+         data-cv-preview-container
+         class="cv-preview-async-content min-h-screen bg-gray-100 py-8 px-4">
 
         <div class="max-w-6xl mx-auto">
 
@@ -87,16 +100,25 @@ $photoUrl = $cv->photo_path
 
 
             {{-- SAVED MESSAGE --}}
-            <div class="bg-green-50 border border-green-200 rounded-xl p-4 mb-6 flex gap-3 items-start">
-                <div class="text-green-700 text-xl">✓</div>
+            <div class="{{ $isDraft ? 'bg-amber-50 border-amber-200' : 'bg-green-50 border-green-200' }} border rounded-xl p-4 mb-6 flex gap-3 items-start">
+                <div class="{{ $isDraft ? 'text-amber-700' : 'text-green-700' }} text-xl">✓</div>
                 <div>
-                    <p class="font-bold text-green-900">Your CV is saved in your account.</p>
-                    <p class="text-sm text-green-800 mt-1">
-                        You can return to My CVs and access this document whenever you log in.
+                    <p class="font-bold {{ $isDraft ? 'text-amber-900' : 'text-green-900' }}">
+                        {{ $isDraft ? 'Preview only — your CV has not been saved.' : 'Your CV is saved in your account.' }}
+                    </p>
+                    <p class="text-sm {{ $isDraft ? 'text-amber-800' : 'text-green-800' }} mt-1">
+                        @if($isDraft)
+                            @if($isFree)
+                                Choose Save CV to keep this document, or download a free PDF. Previewing a different template will not save it.
+                            @else
+                                Choose Save CV to keep this document, or pay ₦3,000 to download the premium PDF. Previewing a different template will not save it.
+                            @endif
+                        @else
+                            You can return to My CVs and access this document whenever you log in.
+                        @endif
                     </p>
                 </div>
             </div>
-
 
             {{-- ACTION BAR --}}
             <div class="bg-white border rounded-xl p-4 mb-7 shadow-sm">
@@ -113,25 +135,65 @@ $photoUrl = $cv->photo_path
                     </div>
 
                     <div class="flex flex-wrap gap-2">
+                        @if($isDraft)
+                            <form method="POST" action="{{ route('cvs.preview.edit', $draftId) }}">
+                                @csrf
+                                <input type="hidden" name="template" value="{{ $template }}">
+                                <button type="submit" class="bg-gray-100 hover:bg-gray-200 text-gray-800 px-5 py-3 rounded-lg text-sm font-bold">
+                                    Edit details
+                                </button>
+                            </form>
 
-                        @if(!$isPaid)
-                        <a href="{{ route('cvs.edit', $cv) }}"
-                            class="bg-gray-100 hover:bg-gray-200 text-gray-800 px-5 py-3 rounded-lg text-sm font-bold text-center">
-                            Edit CV
-                        </a>
-                        @endif
+                            <div class="cv-save-download-actions">
+                                <form method="POST" action="{{ route('cvs.preview.save', $draftId) }}">
+                                    @csrf
+                                    <input type="hidden" name="template" value="{{ $template }}">
+                                    <button type="submit" class="bg-green-700 hover:bg-green-800 text-white px-6 py-3 rounded-lg text-sm font-bold">
+                                        Save CV
+                                    </button>
+                                </form>
 
-                        @if($isFree || $isPaid)
-                        <a href="{{ route('cvs.download', $cv) }}"
-                            class="bg-blue-600 hover:bg-blue-700 text-white px-6 py-3 rounded-lg text-sm font-bold text-center">
-                            Download PDF
-                        </a>
+                                @if($isFree)
+                                    <form method="POST" action="{{ route('cvs.preview.download', $draftId) }}">
+                                        @csrf
+                                        <input type="hidden" name="template" value="{{ $template }}">
+                                        <button type="submit" class="bg-white border border-green-700 text-green-800 px-6 py-3 rounded-lg text-sm font-bold">
+                                            Download PDF
+                                        </button>
+                                    </form>
+                                @else
+                                    <form method="POST" action="{{ route('cvs.preview.pay', $draftId) }}">
+                                        @csrf
+                                        <input type="hidden" name="template" value="{{ $template }}">
+                                        <button type="submit" class="bg-yellow-500 hover:bg-yellow-600 text-white px-5 py-3 rounded-lg text-sm font-bold">
+                                            Pay ₦3,000 &amp; Download
+                                        </button>
+                                    </form>
+                                @endif
+                            </div>
                         @else
-                        <div class="bg-yellow-50 border border-yellow-200 text-yellow-800 px-5 py-3 rounded-lg text-sm font-semibold">
-                            Complete ₦3,000 payment to download
-                        </div>
-                        @endif
+                            @if(!$isPaid)
+                                <a href="{{ route('cvs.edit', $cv) }}"
+                                    class="bg-gray-100 hover:bg-gray-200 text-gray-800 px-5 py-3 rounded-lg text-sm font-bold text-center">
+                                    Edit CV
+                                </a>
+                            @endif
 
+                            @if($isFree || $isPaid)
+                                <a href="{{ route('cvs.download', $cv) }}"
+                                    class="bg-blue-600 hover:bg-blue-700 text-white px-6 py-3 rounded-lg text-sm font-bold text-center">
+                                    Download PDF
+                                </a>
+                            @else
+                                <form method="POST" action="{{ route('cvs.pay', $cv) }}">
+                                    @csrf
+                                    <button type="submit" class="bg-yellow-500 hover:bg-yellow-600 text-white px-5 py-3 rounded-lg text-sm font-bold">
+                                        Pay ₦3,000 &amp; Download
+                                    </button>
+                                </form>
+                            @endif
+                        @endif
+                    </div>
                     </div>
 
                 </div>
@@ -139,10 +201,11 @@ $photoUrl = $cv->photo_path
             </div>
 
 
-            {{-- CV DOCUMENT --}}
-            <div class="overflow-x-auto pb-6">
+            {{-- CV DOCUMENT AND TEMPLATE SWITCHER --}}
+            <div class="cv-preview-stage">
+                <div class="cv-preview-scroll overflow-x-auto pb-6">
 
-                <div class="cv-paper mx-auto bg-white shadow-xl"
+                    <div class="cv-paper mx-auto bg-white shadow-xl"
                     style="--cv-primary: {{ $theme['primary'] }};
                             --cv-soft: {{ $theme['soft'] }};
                             --cv-text: {{ $theme['text'] }};">
@@ -320,8 +383,8 @@ $photoUrl = $cv->photo_path
                                 <span>{{ $cv->address }}</span>
                                 @endif
                             </div>
-                        </div>
 
+                    </div>
                     </div>
 
 
@@ -420,6 +483,25 @@ $photoUrl = $cv->photo_path
 
                 </div>
 
+                @if($isDraft)
+                    <nav class="cv-preview-arrow-nav" aria-label="CV template preview navigation">
+                        <a href="{{ route('cvs.preview', ['draft' => $draftId, 'template' => $previousPreviewTemplate]) }}"
+                           class="cv-preview-arrow"
+                           data-preview-direction="previous"
+                           aria-label="Preview previous template"
+                           title="Preview previous template">
+                            ←
+                        </a>
+                        <a href="{{ route('cvs.preview', ['draft' => $draftId, 'template' => $nextPreviewTemplate]) }}"
+                           class="cv-preview-arrow"
+                           data-preview-direction="next"
+                           aria-label="Preview next template"
+                           title="Preview next template">
+                            →
+                        </a>
+                    </nav>
+                @endif
+
             </div>
 
 
@@ -427,29 +509,60 @@ $photoUrl = $cv->photo_path
             <div class="bg-white border rounded-xl p-5 mt-5 text-center">
 
                 <h2 class="text-lg font-bold text-gray-900">
-                    Your CV is ready
+                    {{ $isDraft ? 'Preview complete' : 'Your CV is ready' }}
                 </h2>
 
                 <p class="text-sm text-gray-500 mt-2">
-                    Your document is saved to your account. You can return to it at any time.
+                    {{ $isDraft ? 'This preview has not been saved. Choose what you want to do next.' : 'Your document is saved to your account. You can return to it at any time.' }}
                 </p>
 
-                <div class="flex flex-wrap justify-center gap-3 mt-5">
+                <div class="{{ $isDraft ? 'cv-save-download-actions mx-auto mt-5' : 'flex flex-wrap justify-center gap-3 mt-5' }}">
 
-                    <a href="{{ route('cvs.index') }}"
-                        class="bg-gray-100 hover:bg-gray-200 text-gray-800 px-6 py-3 rounded-lg font-bold text-sm">
-                        My Saved CVs
-                    </a>
+                    @if($isDraft)
+                        <form method="POST" action="{{ route('cvs.preview.save', $draftId) }}">
+                            @csrf
+                            <input type="hidden" name="template" value="{{ $template }}">
+                            <button type="submit" class="bg-green-700 hover:bg-green-800 text-white px-7 py-3 rounded-lg font-bold text-sm">
+                                Save CV
+                            </button>
+                        </form>
 
-                    @if($isFree || $isPaid)
-                    <a href="{{ route('cvs.download', $cv) }}"
-                        class="bg-blue-600 hover:bg-blue-700 text-white px-7 py-3 rounded-lg font-bold text-sm">
-                        Download My CV
-                    </a>
+                        @if($isFree)
+                            <form method="POST" action="{{ route('cvs.preview.download', $draftId) }}">
+                                @csrf
+                                <input type="hidden" name="template" value="{{ $template }}">
+                                <button type="submit" class="bg-white border border-green-700 text-green-800 px-7 py-3 rounded-lg font-bold text-sm">
+                                    Download PDF
+                                </button>
+                            </form>
+                        @else
+                            <form method="POST" action="{{ route('cvs.preview.pay', $draftId) }}">
+                                @csrf
+                                <input type="hidden" name="template" value="{{ $template }}">
+                                <button type="submit" class="bg-yellow-500 hover:bg-yellow-600 text-white px-6 py-3 rounded-lg font-bold text-sm">
+                                    Pay ₦3,000 &amp; Download
+                                </button>
+                            </form>
+                        @endif
                     @else
-                    <span class="bg-yellow-50 text-yellow-800 border border-yellow-200 px-5 py-3 rounded-lg text-sm font-semibold">
-                        Premium download locked until payment
-                    </span>
+                        <a href="{{ route('cvs.index') }}"
+                            class="bg-gray-100 hover:bg-gray-200 text-gray-800 px-6 py-3 rounded-lg font-bold text-sm">
+                            My Saved CVs
+                        </a>
+
+                        @if($isFree || $isPaid)
+                            <a href="{{ route('cvs.download', $cv) }}"
+                                class="bg-blue-600 hover:bg-blue-700 text-white px-7 py-3 rounded-lg font-bold text-sm">
+                                Download My CV
+                            </a>
+                        @else
+                            <form method="POST" action="{{ route('cvs.pay', $cv) }}">
+                                @csrf
+                                <button type="submit" class="bg-yellow-500 hover:bg-yellow-600 text-white px-6 py-3 rounded-lg font-bold text-sm">
+                                    Pay ₦3,000 &amp; Download
+                                </button>
+                            </form>
+                        @endif
                     @endif
 
                 </div>
@@ -630,7 +743,39 @@ $photoUrl = $cv->photo_path
     @media (max-width: 767px) {
         .cv-paper {
             width: 100%;
-            min-width: 650px;
+            min-width: 0;
+            min-height: 0;
+        }
+
+        .cv-sidebar-layout {
+            grid-template-columns: minmax(0, 1fr);
+            min-height: 0;
+        }
+
+        .cv-sidebar {
+            padding: 26px 22px;
+        }
+
+        .cv-sidebar .text-center {
+            text-align: left;
+        }
+
+        .cv-main-content,
+        .cv-standard-content {
+            padding: 28px 22px;
+        }
+
+        .cv-standard-header {
+            align-items: flex-start;
+            flex-direction: column;
+            padding: 28px 22px;
+        }
+
+        .cv-standard-photo,
+        .cv-photo,
+        .cv-photo-placeholder {
+            width: 88px;
+            height: 88px;
         }
     }
 

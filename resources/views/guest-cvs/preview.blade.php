@@ -8,7 +8,7 @@
     @vite(['resources/css/app.css', 'resources/js/app.js'])
 
     @php
-        $template = $cv->template ?? 'simple';
+        $template = $previewTemplate ?? $cv->template ?? 'simple';
 
         $themes = [
             'simple' => ['#26734D', '#E8F3EC'],
@@ -66,6 +66,16 @@
             && file_exists(public_path('storage/' . $cv->photo_path))
             ? asset('storage/' . $cv->photo_path)
             : null;
+
+        $previewTemplates = array_merge(['simple'], $premiumTemplates);
+        $previewTemplateIndex = array_search($template, $previewTemplates, true);
+        $previewTemplateIndex = $previewTemplateIndex === false ? 0 : $previewTemplateIndex;
+        $previousTemplate = $previewTemplates[
+            ($previewTemplateIndex - 1 + count($previewTemplates)) % count($previewTemplates)
+        ];
+        $nextTemplate = $previewTemplates[
+            ($previewTemplateIndex + 1) % count($previewTemplates)
+        ];
     @endphp
 
     <style>
@@ -474,11 +484,55 @@
         }
 
         .preview-toolbar {
-            max-width: 1100px;
+            width: min(1100px, calc(100% - 32px));
             margin: 25px auto 0;
             padding: 20px;
             background: white;
             border-radius: 12px;
+            border: 1px solid #e6eee8;
+            box-shadow: 0 8px 26px rgba(20,37,28,.06);
+        }
+
+        .guest-preview-stage {
+            position: relative;
+            width: min(1100px, calc(100% - 32px));
+            margin: 0 auto;
+            --cv-preview-width: 900px;
+        }
+
+        .preview-toolbar-actions {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 8px;
+        }
+
+        .preview-toolbar-actions a,
+        .preview-toolbar-actions button {
+            min-height: 44px;
+            display: inline-flex;
+            align-items: center;
+            justify-content: center;
+            text-align: center;
+            white-space: normal;
+        }
+
+        @media(max-width: 650px) {
+            .preview-toolbar {
+                width: calc(100% - 24px);
+                margin: 12px auto;
+                padding: 16px;
+            }
+
+            .preview-toolbar-actions,
+            .preview-toolbar-actions > *,
+            .preview-toolbar-actions form {
+                width: 100%;
+            }
+
+            .preview-toolbar-actions form button {
+                width: 100%;
+            }
+            .guest-preview-stage { width: calc(100% - 24px); }
         }
 
         @media(max-width: 950px) {
@@ -538,6 +592,9 @@
 
 <body>
 
+    <div id="cv-preview-async-content"
+         data-cv-preview-container
+         class="cv-preview-async-content">
     <div class="no-print preview-toolbar">
         <div class="flex flex-col md:flex-row md:items-center md:justify-between gap-4">
             <div>
@@ -549,15 +606,34 @@
                 </p>
             </div>
 
-            <div class="flex flex-wrap gap-2">
+            <div class="preview-toolbar-actions">
                 @if($isFree || $isPaid)
+                    <div class="cv-save-download-actions">
                     <a href="{{ route('guest-cvs.download', ['token' => $cv->guest_token]) }}"
                        class="bg-green-600 hover:bg-green-700 text-white font-bold px-5 py-3 rounded-lg">
                         Download PDF
                     </a>
+
+                    @auth
+                        <form method="POST" action="{{ route('guest-cvs.save', ['token' => $cv->guest_token]) }}">
+                            @csrf
+                            <input type="hidden" name="template" value="{{ $template }}">
+                            <button type="submit"
+                                    class="bg-white border border-green-600 text-green-700 hover:bg-green-50 font-bold px-5 py-3 rounded-lg">
+                                Save to account
+                            </button>
+                        </form>
+                    @else
+                        <a href="{{ route('guest-cvs.save-start', ['token' => $cv->guest_token]) }}"
+                           class="bg-white border border-green-600 text-green-700 hover:bg-green-50 font-bold px-5 py-3 rounded-lg">
+                            Save to account
+                        </a>
+                    @endauth
+                    </div>
                 @elseif($isPremium = array_key_exists($template, $premiumNames))
                     <form method="POST" action="{{ route('guest-cvs.pay', ['token' => $cv->guest_token]) }}">
                         @csrf
+                        <input type="hidden" name="template" value="{{ $template }}">
                         <button class="bg-blue-700 hover:bg-blue-800 text-white font-bold px-5 py-3 rounded-lg">
                             Pay ₦3,000 & Download
                         </button>
@@ -593,6 +669,7 @@
         @endif
     </div>
 
+    <div class="guest-preview-stage">
     <main class="cv-paper template-{{ $template }}">
 
         @if($hasSidebar)
@@ -809,9 +886,30 @@
 
     </main>
 
+    @if(!$isPaid)
+        <nav class="cv-preview-arrow-nav" aria-label="CV template preview navigation">
+            <a href="{{ route('guest-cvs.preview', ['token' => $cv->guest_token, 'template' => $previousTemplate]) }}"
+               class="cv-preview-arrow"
+               data-preview-direction="previous"
+               aria-label="Preview previous template"
+               title="Preview previous template">
+                ←
+            </a>
+            <a href="{{ route('guest-cvs.preview', ['token' => $cv->guest_token, 'template' => $nextTemplate]) }}"
+               class="cv-preview-arrow"
+               data-preview-direction="next"
+               aria-label="Preview next template"
+               title="Preview next template">
+                →
+            </a>
+        </nav>
+    @endif
+    </div>
+
     <footer class="no-print text-center text-xs text-gray-500 py-8">
         Created with NaijaCV · Build your CV. Get hired. Move forward.
     </footer>
+    </div>
 
 </body>
 </html>

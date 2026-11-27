@@ -29,9 +29,9 @@ $sidebarTemplates = [
 
 $hasSidebar = in_array($template, $sidebarTemplates, true);
 
-$photoFile = $cv->photo_path
+$photoFile = $draftPhotoPath ?? ($cv->photo_path
 ? public_path('storage/' . $cv->photo_path)
-: null;
+: null);
 
 $hasPhoto = $photoFile && file_exists($photoFile);
 @endphp

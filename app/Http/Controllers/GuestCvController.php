@@ -190,21 +190,33 @@ if ($request->hasFile('photo')) {
      * Initialize Paystack payment.
      * No login required.
      */
-    public function pay(string $token)
+    public function pay(Request $request, string $token)
     {
         $cv = Cv::where('guest_token', $token)
             ->whereNull('user_id')
             ->where('expires_at', '>', now())
             ->firstOrFail();
-if (!$this->isPremiumTemplate($cv->template)) {
-            abort(403, 'This CV does not require payment.');
-        }
+
+        $validated = $request->validate([
+            'template' => ['sometimes', 'string', Rule::in($this->premiumTemplates())],
+        ]);
+        $selectedTemplate = $validated['template'] ?? $cv->template;
 
         // If already paid, download immediately.
         if ($cv->payment_status === 'paid' && $cv->is_paid) {
+            abort_unless($selectedTemplate === $cv->template, 403, 'A paid CV template cannot be changed.');
+
             return redirect()->route('guest-cvs.download', [
                 'token' => $cv->guest_token,
             ]);
+        }
+
+        if (!$this->isPremiumTemplate($selectedTemplate)) {
+            abort(403, 'This CV does not require payment.');
+        }
+
+        if ($cv->template !== $selectedTemplate) {
+            $cv->update(['template' => $selectedTemplate]);
         }
 
         if (empty($cv->email)) {
@@ -493,7 +505,6 @@ public function webhook(Request $request)
     }
 
     $cv = Cv::where('payment_reference', $reference)
-        ->whereNull('user_id')
         ->whereIn('template', $this->premiumTemplates())
         ->first();
 
@@ -601,10 +612,67 @@ public function recoverPayment(string $token)
             ->with('error', 'We could not recover your download right now. Please try again.');
     }
 }
+    public function beginSave(Request $request, string $token)
+    {
+        $cv = Cv::where('guest_token', $token)
+            ->whereNull('user_id')
+            ->where('expires_at', '>', now())
+            ->firstOrFail();
+
+        if ($request->user()) {
+            return redirect()->route('guest-cvs.preview', ['token' => $cv->guest_token]);
+        }
+
+        $request->session()->put(
+            'url.intended',
+            route('guest-cvs.preview', ['token' => $cv->guest_token])
+        );
+
+        return redirect()->route('login');
+    }
+
+    public function saveToAccount(Request $request, string $token)
+    {
+        $validated = $request->validate([
+            'template' => ['required', 'string', Rule::in(array_merge(['simple'], $this->premiumTemplates()))],
+        ]);
+
+        $cv = DB::transaction(function () use ($request, $token, $validated) {
+            $cv = Cv::where('guest_token', $token)
+                ->whereNull('user_id')
+                ->where('expires_at', '>', now())
+                ->lockForUpdate()
+                ->firstOrFail();
+
+            $isFree = $cv->template === 'simple'
+                && $cv->payment_status === 'free'
+                && !$cv->is_paid;
+            $isPaid = $cv->payment_status === 'paid' && $cv->is_paid;
+
+            abort_unless(
+                $validated['template'] === $cv->template && ($isFree || $isPaid),
+                403,
+                'Select and pay for a premium template before saving this CV.'
+            );
+
+            $cv->update([
+                'user_id' => $request->user()->id,
+                'guest_token' => null,
+                'expires_at' => null,
+            ]);
+
+            return $cv;
+        });
+
+        return redirect()
+            ->route('cvs.show', $cv)
+            ->with('success', 'CV saved to your account.');
+    }
+
     /**
      * Display the guest CV preview.
      */
-    public function preview(string $token)
+    public function preview(Request $request, string $token)
     {
         $cv = Cv::where('guest_token', $token)
             ->whereNull('user_id')
@@ -612,7 +680,18 @@ public function recoverPayment(string $token)
             ->with(['educations', 'experiences', 'skills'])
             ->firstOrFail();
 
-        return view('guest-cvs.preview', compact('cv'));
+        $validated = $request->validate([
+            'template' => ['sometimes', 'string', Rule::in(array_merge(['simple'], $this->premiumTemplates()))],
+        ]);
+        $previewTemplate = $validated['template'] ?? $cv->template;
+
+        if ($cv->payment_status === 'paid' && $cv->is_paid) {
+            abort_unless($previewTemplate === $cv->template, 403, 'A paid CV template cannot be changed.');
+        }
+
+        $premiumTemplates = $this->premiumTemplates();
+
+        return view('guest-cvs.preview', compact('cv', 'previewTemplate', 'premiumTemplates'));
     }
 
     /**

@@ -39,5 +39,8 @@ return [
     'secret_key' => env('PAYSTACK_SECRET_KEY'),
     'webhook_secret' => env('PAYSTACK_WEBHOOK_SECRET'),
 ],
-
+'openai' => [
+    'api_key' => env('OPENAI_API_KEY'),
+    'model' => env('OPENAI_MODEL', 'gpt-6.2-astra'),
+],
 ];
