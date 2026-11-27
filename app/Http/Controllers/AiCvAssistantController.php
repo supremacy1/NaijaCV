@@ -38,7 +38,9 @@ class AiCvAssistantController extends Controller
             'extra_context' => ['nullable', 'string', 'max:2000'],
         ]);
 
-        $apiKey = config('services.openai.api_key');
+        // GROQ CONFIGURATION
+        $apiKey = config('services.groq.api_key');
+        $model = config('services.groq.model', 'openai/gpt-oss-20b');
 
         if (!$apiKey) {
             return response()->json([
@@ -64,7 +66,11 @@ class AiCvAssistantController extends Controller
             ], 422);
         }
 
-        if ($action === 'generate' && empty($validated['extra_context']) && empty($validated['job_title'])) {
+        if (
+            $action === 'generate' &&
+            empty($validated['extra_context']) &&
+            empty($validated['job_title'])
+        ) {
             return response()->json([
                 'success' => false,
                 'message' => 'Please provide a job title or some information about your experience first.',
@@ -110,59 +116,81 @@ PROMPT;
         ];
 
         try {
+
+            // SEND REQUEST TO GROQ
             $response = Http::withToken($apiKey)
                 ->acceptJson()
                 ->timeout(60)
-                ->post('https://api.openai.com/v1/responses', [
-                    'model' => config('services.openai.model', 'gpt-6.2-astra'),
-                    'instructions' => $instructions,
-                    'input' => implode("\n", $userInput),
-                    'max_output_tokens' => 700,
+                ->post('https://api.groq.com/openai/v1/chat/completions', [
+
+                    'model' => $model,
+
+                    'messages' => [
+                        [
+                            'role' => 'system',
+                            'content' => $instructions,
+                        ],
+                        [
+                            'role' => 'user',
+                            'content' => implode("\n", $userInput),
+                        ],
+                    ],
+
+                    'temperature' => 0.7,
+
+                    'max_completion_tokens' => 700,
                 ]);
 
+            // HANDLE API ERRORS
             if (!$response->successful()) {
-                Log::warning('NaijaCV AI API request failed', [
+
+                Log::warning('NaijaCV Groq API request failed', [
                     'status' => $response->status(),
                     'response' => $response->json(),
                 ]);
 
+                $message = match ($response->status()) {
+                    401, 403 => 'The AI service configuration is invalid. Please contact support.',
+                    429 => 'The AI assistant has reached its usage limit. Please try again later.',
+                    400 => 'The AI assistant could not process this request. Please try again.',
+                    default => 'The AI assistant could not complete your request. Please try again.',
+                };
+
                 return response()->json([
                     'success' => false,
-                    'message' => 'The AI assistant could not complete your request. Please try again.',
+                    'message' => $message,
                 ], 502);
             }
 
+            // EXTRACT GROQ RESPONSE
             $data = $response->json();
-            $generatedText = '';
 
-            foreach (($data['output'] ?? []) as $item) {
-                if (($item['type'] ?? '') !== 'message') {
-                    continue;
-                }
-
-                foreach (($item['content'] ?? []) as $content) {
-                    if (($content['type'] ?? '') === 'output_text') {
-                        $generatedText .= $content['text'] ?? '';
-                    }
-                }
-            }
-
-            $generatedText = trim($generatedText);
+            $generatedText = trim(
+                $data['choices'][0]['message']['content'] ?? ''
+            );
 
             if ($generatedText === '') {
+
+                Log::warning('NaijaCV Groq returned an empty response', [
+                    'model' => $model,
+                    'response' => $data,
+                ]);
+
                 return response()->json([
                     'success' => false,
                     'message' => 'AI returned an empty response. Please try again.',
                 ], 502);
             }
 
+            // SUCCESS
             return response()->json([
                 'success' => true,
                 'text' => $generatedText,
             ]);
 
         } catch (\Throwable $exception) {
-            Log::error('NaijaCV AI assistant error', [
+
+            Log::error('NaijaCV Groq AI assistant error', [
                 'message' => $exception->getMessage(),
             ]);
 

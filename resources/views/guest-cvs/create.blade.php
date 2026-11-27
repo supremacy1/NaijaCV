@@ -839,6 +839,15 @@
                         placeholder="Write a short professional introduction..."
 
                         class="w-full rounded-lg border-gray-300 focus:border-blue-500 focus:ring-blue-500">{{ old('summary') }}</textarea>
+<div x-data="naijaCvAi({section: 'professional_summary', read: () => document.querySelector('textarea[name=summary]').value, write: value => { const field = document.querySelector('textarea[name=summary]'); field.value = value; field.dispatchEvent(new Event('input', {bubbles:true})); }, context: () => ({professional_title: document.querySelector('input[name=professional_title]')?.value || ''})})" class="mt-3 rounded-xl border border-indigo-100 bg-indigo-50/60 p-4">
+    <div class="flex flex-wrap items-center justify-between gap-2"><div><p class="text-sm font-semibold text-indigo-900">✦ NaijaCV AI Assistant</p><p class="text-xs text-gray-600">Generate or improve this section. Review the suggestion before applying it.</p></div>
+        <select x-model="action" class="rounded-lg border-gray-300 bg-white text-sm"><option value="generate">Generate</option><option value="improve">Improve</option><option value="expand">Expand</option><option value="shorten">Shorten</option></select>
+    </div>
+    <textarea x-model="$data.extraContext" rows="2" placeholder="Optional: add your real experience, strengths, target role or achievements..." class="mt-3 w-full rounded-lg border-gray-300 bg-white text-sm"></textarea>
+    <div class="mt-3 flex flex-wrap items-center gap-3"><button type="button" @click="generate()" :disabled="$data.loading" class="rounded-lg bg-indigo-600 px-4 py-2 text-sm font-semibold text-white hover:bg-indigo-700 disabled:opacity-50"><span x-show="!$data.loading">✦ Generate with AI</span><span x-show="$data.loading">Working...</span></button><span x-show="$data.message" x-text="$data.message" class="text-sm text-gray-600" aria-live="polite"></span></div>
+    <div x-show="$data.suggestion" x-cloak class="mt-4 rounded-lg border border-indigo-200 bg-white p-3"><p class="mb-2 text-xs font-bold uppercase tracking-wide text-indigo-700">AI suggestion — review before applying</p><div x-text="$data.suggestion" class="whitespace-pre-line text-sm text-gray-800"></div><div class="mt-3 flex gap-2"><button type="button" @click="apply()" class="rounded-lg bg-green-600 px-4 py-2 text-sm font-semibold text-white">Apply to my CV</button><button type="button" @click="discard()" class="rounded-lg border px-4 py-2 text-sm font-semibold text-gray-700">Discard</button></div></div>
+</div>
+
 
 
 
@@ -1121,6 +1130,15 @@
                                         placeholder="Optional information about your education"
 
                                         class="w-full rounded-lg border-gray-300"></textarea>
+<div x-data="naijaCvAi({section: 'additional_details', read: () => education.description, write: value => { education.description = value }, context: () => ({qualification: education.qualification, field_of_study: education.field_of_study, institution: education.institution})})" class="mt-3 rounded-xl border border-indigo-100 bg-indigo-50/60 p-4">
+    <div class="flex flex-wrap items-center justify-between gap-2"><div><p class="text-sm font-semibold text-indigo-900">✦ NaijaCV AI Assistant</p><p class="text-xs text-gray-600">Generate or improve this section. Review the suggestion before applying it.</p></div>
+        <select x-model="action" class="rounded-lg border-gray-300 bg-white text-sm"><option value="generate">Generate</option><option value="improve">Improve</option><option value="expand">Expand</option><option value="shorten">Shorten</option></select>
+    </div>
+    <textarea x-model="$data.extraContext" rows="2" placeholder="Optional: add your real experience, strengths, target role or achievements..." class="mt-3 w-full rounded-lg border-gray-300 bg-white text-sm"></textarea>
+    <div class="mt-3 flex flex-wrap items-center gap-3"><button type="button" @click="generate()" :disabled="$data.loading" class="rounded-lg bg-indigo-600 px-4 py-2 text-sm font-semibold text-white hover:bg-indigo-700 disabled:opacity-50"><span x-show="!$data.loading">✦ Generate with AI</span><span x-show="$data.loading">Working...</span></button><span x-show="$data.message" x-text="$data.message" class="text-sm text-gray-600" aria-live="polite"></span></div>
+    <div x-show="$data.suggestion" x-cloak class="mt-4 rounded-lg border border-indigo-200 bg-white p-3"><p class="mb-2 text-xs font-bold uppercase tracking-wide text-indigo-700">AI suggestion — review before applying</p><div x-text="$data.suggestion" class="whitespace-pre-line text-sm text-gray-800"></div><div class="mt-3 flex gap-2"><button type="button" @click="apply()" class="rounded-lg bg-green-600 px-4 py-2 text-sm font-semibold text-white">Apply to my CV</button><button type="button" @click="discard()" class="rounded-lg border px-4 py-2 text-sm font-semibold text-gray-700">Discard</button></div></div>
+</div>
+
 
 
 
@@ -1419,6 +1437,15 @@
                                         placeholder="Describe your responsibilities and achievements..."
 
                                         class="w-full rounded-lg border-gray-300"></textarea>
+<div x-data="naijaCvAi({section: 'responsibilities_achievements', read: () => experience.duties, write: value => { experience.duties = value }, context: () => ({job_title: experience.job_title, company: experience.company})})" class="mt-3 rounded-xl border border-indigo-100 bg-indigo-50/60 p-4">
+    <div class="flex flex-wrap items-center justify-between gap-2"><div><p class="text-sm font-semibold text-indigo-900">✦ NaijaCV AI Assistant</p><p class="text-xs text-gray-600">Generate or improve this section. Review the suggestion before applying it.</p></div>
+        <select x-model="action" class="rounded-lg border-gray-300 bg-white text-sm"><option value="generate">Generate</option><option value="improve">Improve</option><option value="expand">Expand</option><option value="shorten">Shorten</option></select>
+    </div>
+    <textarea x-model="$data.extraContext" rows="2" placeholder="Optional: add your real experience, strengths, target role or achievements..." class="mt-3 w-full rounded-lg border-gray-300 bg-white text-sm"></textarea>
+    <div class="mt-3 flex flex-wrap items-center gap-3"><button type="button" @click="generate()" :disabled="$data.loading" class="rounded-lg bg-indigo-600 px-4 py-2 text-sm font-semibold text-white hover:bg-indigo-700 disabled:opacity-50"><span x-show="!$data.loading">✦ Generate with AI</span><span x-show="$data.loading">Working...</span></button><span x-show="$data.message" x-text="$data.message" class="text-sm text-gray-600" aria-live="polite"></span></div>
+    <div x-show="$data.suggestion" x-cloak class="mt-4 rounded-lg border border-indigo-200 bg-white p-3"><p class="mb-2 text-xs font-bold uppercase tracking-wide text-indigo-700">AI suggestion — review before applying</p><div x-text="$data.suggestion" class="whitespace-pre-line text-sm text-gray-800"></div><div class="mt-3 flex gap-2"><button type="button" @click="apply()" class="rounded-lg bg-green-600 px-4 py-2 text-sm font-semibold text-white">Apply to my CV</button><button type="button" @click="discard()" class="rounded-lg border px-4 py-2 text-sm font-semibold text-gray-700">Discard</button></div></div>
+</div>
+
 
 
 
@@ -1703,6 +1730,33 @@
 
 
     <script>
+
+    window.naijaCvAi = function (config) {
+        return {
+            action: 'improve', extraContext: '', suggestion: '', message: '', loading: false,
+            async generate() {
+                this.message = ''; this.suggestion = '';
+                const currentText = (config.read() || '').trim();
+                if (this.action !== 'generate' && !currentText) { this.message = 'Enter some text first, or choose Generate.'; return; }
+                this.loading = true;
+                try {
+                    const token = document.querySelector('input[name="_token"]')?.value;
+                    const context = typeof config.context === 'function' ? config.context() : (config.context || {});
+                    const extra = [this.extraContext, Object.entries(context).map(([key,val]) => `${key}: ${val || ''}`).join('\\n')].filter(Boolean).join('\\n');
+                    const response = await fetch(@js(route('ai.cv-assist')), {method:'POST', headers:{'Content-Type':'application/json','Accept':'application/json','X-CSRF-TOKEN':token || ''}, body:JSON.stringify({section:config.section,action:this.action,text:currentText,extra_context:extra,job_title:context.job_title || context.professional_title || '',industry:'',experience_level:''})});
+                    const data = await response.json();
+                    if (!response.ok) throw new Error(data.message || 'AI request failed. Please try again.');
+                    this.suggestion = data.text || data.output || '';
+                    if (!this.suggestion) throw new Error('The AI returned an empty suggestion.');
+                    this.message = 'Suggestion ready.';
+                } catch(error) { this.message = error.message || 'Unable to contact the AI assistant.'; }
+                finally { this.loading = false; }
+            },
+            apply() { if (!this.suggestion) return; config.write(this.suggestion); this.suggestion=''; this.message='Applied to your form. Remember to save your CV.'; },
+            discard() { this.suggestion=''; this.message='Suggestion discarded.'; }
+        };
+    };
+
         function guestCvForm() {
             return {
                 educations: (@js(old('educations')) || [{
